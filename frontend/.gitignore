@@ -1,0 +1,9 @@
+# Frontend ignore patterns
+node_modules/
+.next/
+out/
+dist/
+*.log
+.env.local
+.env*.local
+

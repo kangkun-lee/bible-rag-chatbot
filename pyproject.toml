@@ -1,0 +1,22 @@
+[project]
+name = "bible-qa"
+version = "0.1.0"
+description = "성경 QA 챗봇 시스템"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "supabase>=2.0.0",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.10",
+    "openai>=1.0.0",
+    "tiktoken>=0.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
