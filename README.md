@@ -17,8 +17,6 @@
 │   ├── models/            # Pydantic 모델
 │   └── scripts/           # 유틸리티 스크립트
 │       └── ingest_bible.py # 벡터 DB 적재 스크립트
-├── bible/                 # 성경 XML 파일
-│   └── SF_2022-09-19_KOR_KORRV_(Korean Revised Version 1952 1961).xml
 ├── frontend/              # Next.js 프론트엔드
 │   ├── app/              # Next.js App Router
 │   ├── components/       # React 컴포넌트
@@ -144,7 +142,7 @@ uv sync
 # Windows: .venv\Scripts\activate
 # Linux/Mac: source .venv/bin/activate
 
-# 성경 XML 파일을 벡터 DB에 적재
+# 성경 데이터를 벡터 DB에 적재
 python app/scripts/ingest_bible.py
 
 # FastAPI 서버 실행
@@ -242,8 +240,7 @@ LangGraph 관련 코드는 `app/langgraph/` 폴더에 직접 구현하시면 됩
 
 ## 개발 참고사항
 
-- 성경 데이터는 `bible/` 폴더의 XML 파일을 사용합니다.
-- XML 파일은 Zefania XML 형식으로 되어 있으며, `ingest_bible.py` 스크립트가 자동으로 파싱합니다.
+- 성경 데이터는 `ingest_bible.py` 스크립트를 통해 벡터 DB에 적재됩니다.
 - 벡터 DB 적재 스크립트는 텍스트를 500자 청크로 분할하며, 50자씩 겹치도록 설정되어 있습니다.
 - RAG 서비스는 유사도 임계값 0.7을 사용하여 상위 5개의 문서를 검색합니다.
 
@@ -252,7 +249,6 @@ LangGraph 관련 코드는 `app/langgraph/` 폴더에 직접 구현하시면 됩
 본 시스템에서 사용하는 성경 본문은 다음과 같습니다:
 
 - **출처**: 대한성서공회, 1961 개정 '성경전서 개역한글판'
-- **파일 형식**: Zefania XML (Korean Revised Version 1952 1961)
 - **라이선스**: Public Domain (재산권 만료)
 
 **저작권 안내**:  
