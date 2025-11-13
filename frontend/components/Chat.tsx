@@ -219,7 +219,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           console.error('Error:', error)
           const errorMessage: MessageData = {
             id: (Date.now() + 1).toString(),
-            text: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.',
+            text: `죄송합니다. 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}. API URL을 확인해주세요.`,
             isUser: false,
           }
           setMessages((prev) => [...prev, errorMessage])
@@ -351,7 +351,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           console.error('Error:', error)
           const errorMessage: MessageData = {
             id: (Date.now() + 1).toString(),
-            text: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.',
+            text: `죄송합니다. 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}. API URL을 확인해주세요.`,
             isUser: false,
           }
           setMessages((prev) => [...prev, errorMessage])

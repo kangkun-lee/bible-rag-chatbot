@@ -1,5 +1,10 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+// 개발 환경에서 API URL 확인
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('API Base URL:', API_BASE_URL)
+}
+
 export interface ChatResponse {
   answer: string
   conversation_id?: string
@@ -27,7 +32,14 @@ export async function sendMessage(
   })
 
   if (!response.ok) {
-    throw new Error('Failed to send message')
+    const errorText = await response.text()
+    console.error('API Error:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: `${API_BASE_URL}/api/chat`,
+      error: errorText
+    })
+    throw new Error(`Failed to send message: ${response.status} ${response.statusText}`)
   }
 
   return response.json()
@@ -61,7 +73,14 @@ export async function* sendMessageStream(
   })
 
   if (!response.ok) {
-    throw new Error('Failed to start stream')
+    const errorText = await response.text()
+    console.error('Stream API Error:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: `${API_BASE_URL}/api/chat/stream`,
+      error: errorText
+    })
+    throw new Error(`Failed to start stream: ${response.status} ${response.statusText}`)
   }
 
   const reader = response.body?.getReader()

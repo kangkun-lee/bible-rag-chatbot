@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Preserve source directories; only ignore Python build outputs under project root if they appear
+# /lib/
 lib64/
 parts/
 sdist/
