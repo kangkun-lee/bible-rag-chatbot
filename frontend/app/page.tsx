@@ -1,9 +1,9 @@
 'use client'
 
-import Chat from '@/components/Chat'
-import ChatInput from '@/components/ChatInput'
-import ThemeToggle from '@/components/ThemeToggle'
-import ConversationList from '@/components/ConversationList'
+import Chat from '../components/Chat'
+import ChatInput from '../components/ChatInput'
+import ThemeToggle from '../components/ThemeToggle'
+import ConversationList from '../components/ConversationList'
 import { useState, useEffect } from 'react'
 
 export default function Home() {

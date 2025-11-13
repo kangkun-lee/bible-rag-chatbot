@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Message from './Message'
-import { sendMessage, sendMessageStream } from '@/lib/api'
+import { sendMessage, sendMessageStream } from '../lib/api'
 
 interface MessageData {
   id: string

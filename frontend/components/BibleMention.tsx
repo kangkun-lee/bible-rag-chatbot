@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { BIBLE_BOOKS, type BibleBook } from '@/lib/bibleBooks'
+import { BIBLE_BOOKS, type BibleBook } from '../lib/bibleBooks'
 
 interface BibleMentionProps {
   isOpen: boolean
