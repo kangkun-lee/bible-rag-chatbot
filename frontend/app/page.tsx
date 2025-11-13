@@ -11,7 +11,39 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [conversationMessages, setConversationMessages] = useState<any[]>([])
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  // 초기 상태: 모바일에서는 닫힘, 데스크톱에서는 열림
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768
+    }
+    return false // SSR에서는 기본적으로 닫힘
+  })
+  
+  // 모바일에서 사이드바는 기본적으로 닫혀있어야 함
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // 초기 로드 시 화면 크기에 따라 사이드바 상태 설정
+      const checkScreenSize = () => {
+        if (window.innerWidth >= 768) {
+          // 데스크톱: 사이드바 열기
+          setIsSidebarOpen(true)
+        } else {
+          // 모바일: 사이드바 닫기
+          setIsSidebarOpen(false)
+        }
+      }
+      
+      // 초기 체크 (약간의 지연을 두어 렌더링 후 실행)
+      const timer = setTimeout(checkScreenSize, 0)
+      
+      // 리사이즈 이벤트 리스너
+      window.addEventListener('resize', checkScreenSize)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('resize', checkScreenSize)
+      }
+    }
+  }, [])
 
   const handleMessageSent = (message: string) => {
     setInputMessage(message)
@@ -84,9 +116,10 @@ export default function Home() {
       <button
         type="button"
         onClick={() => setIsSidebarOpen(true)}
-        className="md:hidden absolute top-3 left-3 z-20 inline-flex items-center justify-center rounded-full bg-background/90 border border-border/40 shadow-sm w-11 h-11 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        className="md:hidden fixed top-3 left-3 z-20 inline-flex items-center justify-center rounded-full bg-background/90 border border-border/40 shadow-sm w-12 h-12 touch-manipulation focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         aria-label="사이드바 열기"
         aria-expanded={isSidebarOpen}
+        style={{ minWidth: '48px', minHeight: '48px' }}
       >
         <svg
           className="w-5 h-5 text-foreground"
@@ -112,27 +145,28 @@ export default function Home() {
 
       {/* 왼쪽 사이드바 */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong border-r border-border/30 shadow-[4px_0_16px_rgba(0,0,0,0.12),8px_0_24px_rgba(0,0,0,0.08),16px_0_48px_rgba(0,0,0,0.04)] transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:flex'}`}
+        className={`fixed inset-y-0 left-0 z-40 w-[85vw] max-w-xs sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong border-r border-border/30 shadow-[4px_0_16px_rgba(0,0,0,0.12),8px_0_24px_rgba(0,0,0,0.08),16px_0_48px_rgba(0,0,0,0.04)] transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:flex'}`}
         role="navigation"
         aria-label="주요 메뉴"
         style={{ boxShadow: '4px 0 16px rgba(0, 0, 0, 0.12), 8px 0 24px rgba(0, 0, 0, 0.08), 16px 0 48px rgba(0, 0, 0, 0.04), inset -1px 0 0 rgba(255, 255, 255, 0.1)' }}
       >
         {/* 로고 영역 */}
-        <div className="p-6 pb-4 border-b border-border/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.12),0_3px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] transform-style-preserve-3d transition-all duration-300 hover:shadow-[0_10px_28px_rgba(0,0,0,0.15),0_5px_14px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] hover:-translate-y-1 hover:translate-z-10 hover:rotate-3" aria-hidden="true" style={{ transformStyle: 'preserve-3d' }}>
-              <span className="text-foreground font-bold text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">✟</span>
+        <div className="p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 border-b border-border/30 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.12),0_3px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] transform-style-preserve-3d transition-all duration-300 hover:shadow-[0_10px_28px_rgba(0,0,0,0.15),0_5px_14px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] hover:-translate-y-1 hover:translate-z-10 hover:rotate-3 flex-shrink-0" aria-hidden="true" style={{ transformStyle: 'preserve-3d' }}>
+              <span className="text-foreground font-bold text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">✟</span>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">성경QA</h1>
-              <p className="text-xs text-muted-foreground">하나님의 말씀을 묻고 답하다</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">성경QA</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">하나님의 말씀을 묻고 답하다</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
-            className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9 rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex-shrink-0 touch-manipulation"
             aria-label="사이드바 닫기"
+            style={{ minWidth: '44px', minHeight: '44px' }}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -141,13 +175,14 @@ export default function Home() {
         </div>
 
         {/* 메인 메뉴 */}
-        <div className="p-4 border-b border-border/30">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">메인 메뉴</h2>
+        <div className="p-3 sm:p-4 border-b border-border/30">
+          <h2 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 sm:mb-3 px-2">메인 메뉴</h2>
           <div className="space-y-1">
             <button 
               onClick={handleNewConversation}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 text-sm font-medium group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 text-sm font-medium group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation"
               aria-label="새 대화 시작"
+              style={{ minHeight: '44px' }}
             >
               <div className="w-5 h-5 rounded-lg bg-secondary/30 flex items-center justify-center group-hover:bg-secondary/50 transition-colors">
                 <svg className="w-3 h-3 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -182,8 +217,8 @@ export default function Home() {
         </div>
 
         {/* 대화 내역 */}
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">대화 내역</h2>
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 scrollbar-hide">
+          <h2 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 sm:mb-3 px-2">대화 내역</h2>
           <ConversationList 
             onSelectConversation={handleSelectConversation}
             selectedConversationId={selectedConversationId}
@@ -192,8 +227,8 @@ export default function Home() {
         </div>
 
         {/* 계정 */}
-        <div className="p-4 border-t border-border/30">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" aria-label="내 계정">
+        <div className="p-3 sm:p-4 border-t border-border/30">
+          <button className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation" aria-label="내 계정" style={{ minHeight: '44px' }}>
             <div className="relative w-9 h-9 rounded-full bg-secondary/30 flex items-center justify-center text-foreground text-xs font-semibold group-hover:bg-secondary/50 transition-colors">
               <span className="relative">사용자</span>
             </div>
@@ -208,19 +243,19 @@ export default function Home() {
         {/* 메인 콘텐츠 - 중앙 정렬, 배경과 일체감 */}
         <div className="flex-1 flex flex-col relative z-10 min-h-0">
           {/* 상단 헤더 - 고정 */}
-          <header className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 flex-shrink-0 glass-strong border-b border-border/30 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06),0_16px_48px_rgba(0,0,0,0.04)]" role="banner">
-            <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-4">
-              <div className="pl-10 md:pl-0">
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+          <header className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0 glass-strong border-b border-border/30 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06),0_16px_48px_rgba(0,0,0,0.04)]" role="banner">
+            <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
+              <div className="pl-10 sm:pl-12 md:pl-0 flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-0.5 sm:mb-1 truncate">
                   안녕하세요, 사용자님
                 </h2>
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span className="text-foreground text-lg" aria-hidden="true">✟</span>
-                  성경에 대해 무엇이든 물어보세요
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 sm:gap-2">
+                  <span className="text-foreground text-base sm:text-lg" aria-hidden="true">✟</span>
+                  <span className="truncate">성경에 대해 무엇이든 물어보세요</span>
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:block text-xs text-muted-foreground glass px-4 py-2 rounded-full backdrop-blur-md border border-border/50">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="hidden lg:block text-xs text-muted-foreground glass px-3 sm:px-4 py-1.5 sm:py-2 rounded-full backdrop-blur-md border border-border/50">
                   출처: <a 
                     href="https://www.bskorea.or.kr" 
                     target="_blank" 
@@ -249,7 +284,7 @@ export default function Home() {
                 overscrollBehavior: 'contain'
               }}
             >
-              <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6">
+              <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 md:px-6 py-4 sm:py-6">
                 <Chat 
                   initialMessage={null} 
                   externalMessage={inputMessage}
@@ -264,8 +299,8 @@ export default function Home() {
             </div>
             
             {/* 입력 영역 - 하단 고정 */}
-            <div className="flex-shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm">
-              <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4">
+            <div className="flex-shrink-0 border-t border-border/30 bg-background/95 backdrop-blur-sm safe-area-inset-bottom">
+              <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                 <ChatInput onMessageSent={handleMessageSent} isLoading={isLoading} />
               </div>
             </div>

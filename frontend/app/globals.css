@@ -298,6 +298,32 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  /* 모바일 최적화 */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* 터치 액션 최적화 */
+  touch-action: manipulation;
+}
+
+/* 모바일 safe area 지원 */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 터치 영역 최소 크기 보장 */
+button, a, input, textarea, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+/* 모바일에서 최소 터치 타겟 크기 */
+@media (max-width: 768px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* 전체 페이지에 3D perspective 추가 */
