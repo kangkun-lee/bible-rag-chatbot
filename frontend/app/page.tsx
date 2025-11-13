@@ -113,7 +113,7 @@ export default function Home() {
   }, [selectedConversationId])
 
   return (
-    <main className="relative h-screen w-screen flex flex-col md:flex-row overflow-hidden bg-background" role="main">
+    <main className="relative h-screen w-screen flex flex-col md:flex-row overflow-hidden bg-background min-h-screen" role="main">
       {/* 스킵 링크 - 접근성 */}
       <a 
         href="#main-content" 
@@ -248,12 +248,12 @@ export default function Home() {
       </aside>
 
       {/* 오른쪽 메인 영역 */}
-      <div className="flex-1 flex flex-col overflow-hidden relative pt-14 sm:pt-16 md:pt-0 z-10">
+      <div className="flex-1 flex flex-col overflow-hidden relative md:pt-0 z-10" style={{ minHeight: 0, flex: '1 1 0%', height: '100vh' }}>
 
         {/* 메인 콘텐츠 - 중앙 정렬, 배경과 일체감 */}
-        <div className="flex-1 flex flex-col relative z-10 min-h-0">
+        <div className="flex-1 flex flex-col relative z-10" style={{ minHeight: 0, flex: '1 1 0%' }}>
           {/* 상단 헤더 - 고정 */}
-          <header className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0 glass-strong border-b border-border/30 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06),0_16px_48px_rgba(0,0,0,0.04)]" role="banner">
+          <header className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0 glass-strong border-b border-border/30 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06),0_16px_48px_rgba(0,0,0,0.04)] mt-14 sm:mt-16 md:mt-0" role="banner">
             <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
               <div className="pl-10 sm:pl-12 md:pl-0 flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-0.5 sm:mb-1 truncate">
@@ -284,11 +284,12 @@ export default function Home() {
           </header>
 
           {/* 채팅 영역 - 스크롤 가능, 중앙 정렬 */}
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ minHeight: 0, flex: '1 1 0%' }}>
             <div 
-              className="flex-1 min-h-0 overflow-y-auto bg-background" 
-              id="main-content" 
+              className="flex-1 overflow-y-auto bg-background" 
+              id="main-content"
               style={{ 
+                minHeight: 0,
                 scrollBehavior: 'smooth',
                 WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain'
