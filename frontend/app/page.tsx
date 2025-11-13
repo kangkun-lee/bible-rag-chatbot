@@ -24,23 +24,33 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       // 초기 로드 시 화면 크기에 따라 사이드바 상태 설정
       const checkScreenSize = () => {
-        if (window.innerWidth >= 768) {
-          // 데스크톱: 사이드바 열기
-          setIsSidebarOpen(true)
-        } else {
-          // 모바일: 사이드바 닫기
-          setIsSidebarOpen(false)
-        }
+        const isDesktop = window.innerWidth >= 768
+        // 상태가 다를 때만 업데이트 (불필요한 리렌더링 방지)
+        setIsSidebarOpen(prev => {
+          if (prev !== isDesktop) {
+            return isDesktop
+          }
+          return prev
+        })
       }
       
-      // 초기 체크 (약간의 지연을 두어 렌더링 후 실행)
-      const timer = setTimeout(checkScreenSize, 0)
+      // 초기 체크를 requestAnimationFrame으로 지연 (레이아웃 안정화 후 실행)
+      const rafId = requestAnimationFrame(() => {
+        checkScreenSize()
+      })
       
-      // 리사이즈 이벤트 리스너
-      window.addEventListener('resize', checkScreenSize)
+      // 리사이즈 이벤트 리스너 (디바운싱)
+      let resizeTimer: NodeJS.Timeout
+      const handleResize = () => {
+        clearTimeout(resizeTimer)
+        resizeTimer = setTimeout(checkScreenSize, 150)
+      }
+      
+      window.addEventListener('resize', handleResize)
       return () => {
-        clearTimeout(timer)
-        window.removeEventListener('resize', checkScreenSize)
+        cancelAnimationFrame(rafId)
+        clearTimeout(resizeTimer)
+        window.removeEventListener('resize', handleResize)
       }
     }
   }, [])
@@ -137,7 +147,7 @@ export default function Home() {
       {isSidebarOpen && (
         <button
           type="button"
-          className="md:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          className="md:hidden fixed inset-0 z-20 bg-black/40 backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
           aria-label="사이드바 닫기"
         />
@@ -145,7 +155,7 @@ export default function Home() {
 
       {/* 왼쪽 사이드바 */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[85vw] max-w-xs sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong border-r border-border/30 shadow-[4px_0_16px_rgba(0,0,0,0.12),8px_0_24px_rgba(0,0,0,0.08),16px_0_48px_rgba(0,0,0,0.04)] transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:flex'}`}
+        className={`fixed inset-y-0 left-0 z-30 w-[85vw] max-w-xs sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong border-r border-border/30 shadow-[4px_0_16px_rgba(0,0,0,0.12),8px_0_24px_rgba(0,0,0,0.08),16px_0_48px_rgba(0,0,0,0.04)] transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:flex'}`}
         role="navigation"
         aria-label="주요 메뉴"
         style={{ boxShadow: '4px 0 16px rgba(0, 0, 0, 0.12), 8px 0 24px rgba(0, 0, 0, 0.08), 16px 0 48px rgba(0, 0, 0, 0.04), inset -1px 0 0 rgba(255, 255, 255, 0.1)' }}
@@ -238,7 +248,7 @@ export default function Home() {
       </aside>
 
       {/* 오른쪽 메인 영역 */}
-      <div className="flex-1 flex flex-col overflow-hidden relative pt-16 md:pt-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative pt-14 sm:pt-16 md:pt-0 z-10">
 
         {/* 메인 콘텐츠 - 중앙 정렬, 배경과 일체감 */}
         <div className="flex-1 flex flex-col relative z-10 min-h-0">
