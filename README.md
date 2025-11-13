@@ -30,7 +30,7 @@
 ### 백엔드
 - FastAPI: Python 웹 프레임워크
 - Supabase: 벡터 DB 및 PostgreSQL
-- OpenAI: 임베딩 및 LLM
+- Google Generative AI (Gemini): 임베딩 및 LLM
 - LangChain: RAG 파이프라인
 - uv: Python 패키지 관리
 
@@ -47,7 +47,7 @@
 - Node.js 18 이상
 - uv 설치: `pip install uv` 또는 `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - Supabase 계정 및 프로젝트
-- OpenAI API 키
+- Google Generative AI API 키
 
 ### 1. 환경변수 설정
 
@@ -59,8 +59,8 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 SUPABASE_TABLE_NAME=bible_chunks
 
-# OpenAI 설정
-OPENAI_API_KEY=your_openai_api_key
+# Google Generative AI 설정
+GOOGLE_API_KEY=your_google_api_key
 
 # FastAPI 설정
 API_HOST=0.0.0.0
@@ -69,30 +69,45 @@ API_PORT=8000
 # CORS 설정
 ALLOWED_ORIGINS=http://localhost:3000
 
-# 임베딩 모델 설정
-EMBEDDING_MODEL=text-embedding-3-small
+# 임베딩 모델 설정 (Google Gemini)
+EMBEDDING_MODEL=models/gemini-embedding-001
 EMBEDDING_DIMENSION=1536
 
-# LLM 설정
-LLM_MODEL=gpt-4-turbo-preview
+# LLM 설정 (Google Gemini)
+LLM_MODEL=gemini-pro
 ```
 
 ### 2. Supabase 벡터 DB 설정
 
-Supabase에서 벡터 확장을 활성화하고 다음 SQL을 실행하세요:
+**⚠️ 중요: 스크립트 실행 전에 반드시 Supabase에서 테이블을 생성해야 합니다!**
+
+Supabase 대시보드에서 다음 단계를 따라하세요:
+
+1. **Supabase 대시보드 접속** → 프로젝트 선택
+2. **Table Editor** 메뉴 클릭 → **New Table** 클릭
+3. 테이블 이름: `bible_chunks`
+4. **SQL Editor**로 이동하여 아래 SQL 실행 (또는 `supabase_setup.sql` 파일 사용)
+
+**Table Editor에서 테이블 생성 시 설정:**
+- ✅ **Enable Row Level Security (RLS)**: **비활성화** (또는 활성화 후 정책 추가)
+  - 백엔드에서 Service Role Key를 사용하므로 RLS를 비활성화해도 안전합니다
+  - 보안을 강화하려면 RLS를 활성화하고 아래 정책을 추가하세요 (선택사항)
+- ❌ **Enable Realtime**: **비활성화** (실시간 업데이트가 필요하지 않음)
+
+**SQL Editor에서 실행할 SQL:**
 
 ```sql
 -- 벡터 확장 활성화
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 테이블 생성
-CREATE TABLE bible_chunks (
+-- 테이블 생성 (임베딩 차원: 1536, output_dimensionality로 설정)
+CREATE TABLE IF NOT EXISTS bible_chunks (
     id BIGSERIAL PRIMARY KEY,
     book TEXT NOT NULL,
     chapter TEXT,
     verse TEXT,
     content TEXT NOT NULL,
-    embedding vector(1536),
+    embedding vector(1536),  -- output_dimensionality로 설정된 차원
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -129,8 +144,30 @@ END;
 $$;
 
 -- 인덱스 생성 (검색 성능 향상)
-CREATE INDEX ON bible_chunks USING ivfflat (embedding vector_cosine_ops);
+-- 1536 차원은 ivfflat 인덱스를 지원합니다 (최대 2000 차원까지 지원)
+-- 데이터가 충분히 많을 때만 인덱스 생성 (최소 1000개 이상 권장)
+CREATE INDEX IF NOT EXISTS bible_chunks_embedding_idx 
+ON bible_chunks 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- (선택사항) RLS 정책 추가 (보안 강화용)
+-- RLS를 활성화한 경우에만 필요합니다
+-- ALTER TABLE bible_chunks ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Enable read access for service role" ON bible_chunks
+--     FOR SELECT USING (true);
+-- CREATE POLICY "Enable insert access for service role" ON bible_chunks
+--     FOR INSERT WITH CHECK (true);
 ```
+
+**참고**: 
+- 프로젝트 루트에 `supabase_setup.sql` 파일이 있습니다. 이 파일을 Supabase SQL Editor에서 실행할 수 있습니다.
+- Gemini 임베딩 `models/gemini-embedding-001`은 `output_dimensionality` 파라미터로 차원을 제어할 수 있습니다.
+- `.env` 파일의 `EMBEDDING_DIMENSION` 환경변수로 차원을 설정합니다 (기본값: 1536).
+- 1536 차원은 `ivfflat` 인덱스를 지원하므로 검색 성능을 향상시킬 수 있습니다.
+- 기존에 3072 차원으로 테이블을 생성했다면 `supabase_fix_dimension.sql` 파일을 실행하여 수정하세요.
+- **RLS 설정**: 백엔드에서 Service Role Key를 사용하므로 RLS를 비활성화해도 안전합니다. 하지만 보안을 강화하려면 RLS를 활성화하고 위의 정책을 추가하세요.
+- **Realtime 설정**: 이 프로젝트는 실시간 업데이트가 필요하지 않으므로 비활성화하세요.
 
 ### 3. 백엔드 설정
 
@@ -142,11 +179,8 @@ uv sync
 # Windows: .venv\Scripts\activate
 # Linux/Mac: source .venv/bin/activate
 
-# 성경 데이터를 벡터 DB에 적재
+# 성경 데이터를 벡터 DB에 적재 (최초 1회만 실행)
 python app/scripts/ingest_bible.py
-
-# FastAPI 서버 실행
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 4. 프론트엔드 설정
@@ -156,16 +190,84 @@ cd frontend
 
 # 의존성 설치
 npm install
+# 또는
+pnpm install
+# 또는
+yarn install
 
 # 환경변수 설정
 # frontend/.env.local 파일 생성
 echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+```
+
+## 서버 실행
+
+### 백엔드 서버 실행
+
+프로젝트 루트 디렉토리에서 실행:
+
+```bash
+# 방법 1: uvicorn 직접 실행
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 방법 2: uv를 사용하여 실행
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**실행 확인:**
+- 서버가 정상적으로 실행되면 `http://localhost:8000`에서 API 문서를 확인할 수 있습니다.
+- API 문서: `http://localhost:8000/docs` (Swagger UI)
+- 대체 문서: `http://localhost:8000/redoc` (ReDoc)
+
+**백엔드 서버 기본 정보:**
+- 포트: `8000`
+- 호스트: `0.0.0.0` (모든 네트워크 인터페이스에서 접근 가능)
+- 자동 리로드: `--reload` 옵션으로 코드 변경 시 자동 재시작
+
+### 프론트엔드 서버 실행
+
+`frontend` 디렉토리에서 실행:
+
+```bash
+cd frontend
 
 # 개발 서버 실행
 npm run dev
+# 또는
+pnpm dev
+# 또는
+yarn dev
 ```
 
-브라우저에서 `http://localhost:3000`을 열어 확인하세요.
+**실행 확인:**
+- 서버가 정상적으로 실행되면 `http://localhost:3000`에서 애플리케이션을 확인할 수 있습니다.
+- 브라우저가 자동으로 열리지 않으면 수동으로 `http://localhost:3000`을 열어주세요.
+
+**프론트엔드 서버 기본 정보:**
+- 포트: `3000`
+- 핫 리로드: 코드 변경 시 자동으로 브라우저가 새로고침됩니다.
+
+### 서버 실행 순서
+
+1. **백엔드 서버 먼저 실행** (터미널 1)
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. **프론트엔드 서버 실행** (터미널 2)
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. **브라우저에서 확인**
+   - 프론트엔드: `http://localhost:3000`
+   - 백엔드 API 문서: `http://localhost:8000/docs`
+
+**참고:**
+- 두 서버를 동시에 실행해야 정상적으로 작동합니다.
+- 백엔드 서버가 실행되지 않으면 프론트엔드에서 API 호출이 실패합니다.
+- 각 서버는 별도의 터미널 창에서 실행하거나, 터미널 멀티플렉서(tmux, screen 등)를 사용할 수 있습니다.
 
 ## 배포
 
@@ -186,7 +288,7 @@ npm run dev
 5. 환경변수 설정:
    - `SUPABASE_URL`
    - `SUPABASE_KEY`
-   - `OPENAI_API_KEY`
+   - `GOOGLE_API_KEY`
    - `ALLOWED_ORIGINS` (프론트엔드 URL)
 6. 배포 완료 후 생성된 URL 확인
 

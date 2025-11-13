@@ -11,22 +11,22 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_table_name: str = "bible_chunks"
     
-    # OpenAI 설정
-    openai_api_key: str
+    # Google Generative AI 설정
+    google_api_key: str
     
     # FastAPI 설정
-    api_host: str = "0.0.0.0"
+    api_host: str = "localhost"  # Windows에서는 localhost 사용 권장
     api_port: int = 8000
     
     # CORS 설정
     allowed_origins: str = "http://localhost:3000"
     
-    # 임베딩 모델 설정
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dimension: int = 1536
+    # 임베딩 모델 설정 (Google Gemini)
+    embedding_model: str = "models/gemini-embedding-001"
+    embedding_dimension: int = 1536  # output_dimensionality 파라미터로 설정할 차원 (기본값: 1536)
     
-    # LLM 설정
-    llm_model: str = "gpt-4-turbo-preview"
+    # LLM 설정 (Google Gemini)
+    llm_model: str = "gemini-pro"  # 또는 "gemini-1.5-pro", "gemini-1.5-flash" 등
     
     @property
     def allowed_origins_list(self) -> List[str]:
@@ -37,6 +37,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # .env 파일의 추가 필드 무시
 
 
 settings = Settings()

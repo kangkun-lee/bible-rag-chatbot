@@ -201,6 +201,22 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# TypeScript build info
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+
+# Frontend build artifacts
+frontend/.next/
+frontend/.vercel/
+frontend/out/
+frontend/dist/
+frontend/.turbo/
+frontend/node_modules/
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

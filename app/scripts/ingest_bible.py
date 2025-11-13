@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import List, Dict
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from openai import OpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # 환경변수 로드
 load_dotenv()
@@ -15,12 +15,20 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_TABLE_NAME = os.getenv("SUPABASE_TABLE_NAME", "bible_chunks")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
+EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1536"))  # output_dimensionality 파라미터 사용
+
+# Google API 키 환경변수 설정 (langchain-google-genai가 자동으로 사용)
+if GOOGLE_API_KEY:
+    os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
 # 클라이언트 초기화
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+embeddings = GoogleGenerativeAIEmbeddings(
+    model=EMBEDDING_MODEL,
+    task_type="RETRIEVAL_DOCUMENT"
+)
 
 # 텍스트 분할기 설정
 text_splitter = RecursiveCharacterTextSplitter(
@@ -108,11 +116,15 @@ def parse_xml_bible(xml_path: Path) -> List[Dict]:
 def get_embedding(text: str) -> List[float]:
     """텍스트를 임베딩으로 변환"""
     try:
-        response = openai_client.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=text
+        embedding = embeddings.embed_query(
+            text,
+            output_dimensionality=EMBEDDING_DIMENSION  # 환경변수에서 차원 가져오기
         )
-        return response.data[0].embedding
+        # 임베딩 차원 확인 (처음 한 번만 출력)
+        if not hasattr(get_embedding, 'dimension_logged'):
+            print(f"임베딩 차원 확인: {len(embedding)}차원 (output_dimensionality={EMBEDDING_DIMENSION})")
+            get_embedding.dimension_logged = True
+        return embedding
     except Exception as e:
         print(f"임베딩 생성 오류: {e}")
         return []
