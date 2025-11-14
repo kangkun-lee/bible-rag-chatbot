@@ -389,48 +389,195 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
   const shouldAutoScrollRef = useRef(true)
 
   const getScrollContainer = (): HTMLElement | null => {
-    // main-content ID를 가진 스크롤 컨테이너 찾기
-    return document.getElementById('main-content')
+    // main-content ID를 가진 스크롤 컨테이너 우선 사용
+    const byId = document.getElementById('main-content')
+    if (byId) {
+      console.log('[Scroll Debug] Found container by ID:', {
+        id: byId.id,
+        scrollHeight: byId.scrollHeight,
+        clientHeight: byId.clientHeight,
+        scrollTop: byId.scrollTop,
+        overflowY: window.getComputedStyle(byId).overflowY,
+        height: window.getComputedStyle(byId).height
+      })
+      return byId
+    }
+
+    // data 속성으로 명시된 컨테이너가 있으면 사용
+    const byData = document.querySelector('[data-scroll-container="chat"]') as HTMLElement | null
+    if (byData) {
+      console.log('[Scroll Debug] Found container by data attribute:', {
+        scrollHeight: byData.scrollHeight,
+        clientHeight: byData.clientHeight,
+        scrollTop: byData.scrollTop,
+        overflowY: window.getComputedStyle(byData).overflowY
+      })
+      return byData
+    }
+
+    console.warn('[Scroll Debug] No scroll container found!')
+    return null
   }
 
   const scrollToBottom = (force = false) => {
-    if (!force && !shouldAutoScrollRef.current) return
+    if (!force && !shouldAutoScrollRef.current) {
+      console.log('[Scroll Debug] scrollToBottom skipped:', { force, shouldAutoScroll: shouldAutoScrollRef.current })
+      return
+    }
     
     const container = getScrollContainer()
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
+      // 모바일에서 더 확실한 스크롤을 위해 여러 방법 시도
+      const scrollHeight = container.scrollHeight
+      const beforeScrollTop = container.scrollTop
+      
+      console.log('[Scroll Debug] scrollToBottom called:', {
+        force,
+        scrollHeight,
+        beforeScrollTop,
+        clientHeight: container.clientHeight,
+        canScroll: scrollHeight > container.clientHeight
       })
+      
+      // 1. 즉시 스크롤
+      container.scrollTop = scrollHeight
+      console.log('[Scroll Debug] Immediate scroll set:', { scrollTop: container.scrollTop })
+      
+      // 2. requestAnimationFrame으로 다시 시도
+      requestAnimationFrame(() => {
+        container.scrollTop = scrollHeight
+        console.log('[Scroll Debug] RAF scroll set:', { scrollTop: container.scrollTop })
+        // 3. scrollTo로 smooth 스크롤
+        setTimeout(() => {
+          container.scrollTo({
+            top: scrollHeight,
+            behavior: 'smooth'
+          })
+          console.log('[Scroll Debug] Smooth scrollTo called:', { scrollTop: container.scrollTop })
+        }, 10)
+      })
+      
+      // 4. 추가 보장을 위해 한 번 더
+      setTimeout(() => {
+        const finalScrollTop = container.scrollTop
+        if (finalScrollTop < scrollHeight - 50) {
+          container.scrollTop = scrollHeight
+          console.log('[Scroll Debug] Final correction applied:', { 
+            before: finalScrollTop, 
+            after: container.scrollTop,
+            scrollHeight 
+          })
+        } else {
+          console.log('[Scroll Debug] Scroll position OK:', { finalScrollTop, scrollHeight })
+        }
+      }, 100)
     } else if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      console.log('[Scroll Debug] Using messagesEndRef.scrollIntoView')
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' })
+    } else {
+      console.warn('[Scroll Debug] No scroll method available!')
     }
   }
 
   // 스크롤 위치 감지
   useEffect(() => {
     const container = getScrollContainer()
-    if (!container) return
+    if (!container) {
+      console.warn('[Scroll Debug] No container found for scroll listener')
+      return
+    }
+
+    console.log('[Scroll Debug] Setting up scroll listener on container:', {
+      id: container.id,
+      hasDataAttr: container.hasAttribute('data-scroll-container')
+    })
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100 // 100px 여유
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
       
       // 사용자가 맨 아래 근처에 있으면 자동 스크롤 활성화
+      const previousValue = shouldAutoScrollRef.current
       shouldAutoScrollRef.current = isNearBottom
+      
+      if (previousValue !== isNearBottom) {
+        console.log('[Scroll Debug] Auto-scroll state changed:', {
+          from: previousValue,
+          to: isNearBottom,
+          scrollTop,
+          scrollHeight,
+          clientHeight,
+          distanceFromBottom
+        })
+      }
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })
-    return () => container.removeEventListener('scroll', handleScroll)
+    return () => {
+      console.log('[Scroll Debug] Removing scroll listener')
+      container.removeEventListener('scroll', handleScroll)
+    }
   }, [])
+
+  // 최초 렌더링 시 자동 스크롤 활성화
+  useEffect(() => {
+    const container = getScrollContainer()
+    if (container) {
+      shouldAutoScrollRef.current = true
+      scrollToBottom(true)
+    }
+  }, [])
+
+  // 초기 로드 시 스크롤 위치 일관성 개선 (메시지가 없을 때는 항상 상단)
+  useEffect(() => {
+    const container = getScrollContainer()
+    if (container && messages.length === 0) {
+      // 초기 상태에서는 항상 상단에 위치
+      container.scrollTop = 0
+      shouldAutoScrollRef.current = true
+    }
+  }, [messages.length])
 
   useEffect(() => {
     // 새 메시지가 추가되거나 메시지 내용이 업데이트될 때 자동 스크롤 (사용자가 맨 아래에 있을 때만)
+    console.log('[Scroll Debug] Messages changed:', {
+      messageCount: messages.length,
+      shouldAutoScroll: shouldAutoScrollRef.current,
+      lastMessage: messages[messages.length - 1]?.text?.substring(0, 50)
+    })
+    
     if (shouldAutoScrollRef.current) {
-      // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤
-      requestAnimationFrame(() => {
-        setTimeout(() => scrollToBottom(), 0)
-      })
+      // 모바일에서 더 확실한 스크롤을 위해 여러 단계로 시도
+      const container = getScrollContainer()
+      if (container) {
+        const beforeHeight = container.scrollHeight
+        // 즉시 스크롤
+        container.scrollTop = container.scrollHeight
+        console.log('[Scroll Debug] Messages effect - immediate scroll:', {
+          scrollHeight: beforeHeight,
+          scrollTop: container.scrollTop
+        })
+        // 다음 프레임에서 다시 스크롤
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight
+          console.log('[Scroll Debug] Messages effect - RAF scroll:', {
+            scrollHeight: container.scrollHeight,
+            scrollTop: container.scrollTop
+          })
+          // 한 번 더 smooth 스크롤
+          setTimeout(() => {
+            scrollToBottom(true)
+          }, 50)
+        })
+      } else {
+        console.warn('[Scroll Debug] Messages effect - no container, using fallback')
+        requestAnimationFrame(() => {
+          setTimeout(() => scrollToBottom(), 0)
+        })
+      }
+    } else {
+      console.log('[Scroll Debug] Messages effect - auto-scroll disabled, user scrolled up')
     }
   }, [messages])
 
@@ -566,18 +713,18 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     <div className="flex flex-col w-full transition-all duration-300 bg-transparent">
       {/* 채팅 메시지 영역 */}
       {showMessages && (
-        <div className={`w-full p-4 md:p-6 space-y-4 bg-transparent ${messages.length === 0 ? 'flex flex-col items-center justify-center min-h-[60vh]' : 'pb-8'}`}>
+        <div className={`w-full p-4 md:p-6 space-y-4 bg-transparent ${messages.length === 0 ? 'flex flex-col items-center justify-center min-h-[40vh] md:min-h-[60vh]' : 'pb-8'}`}>
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center text-center px-4 max-w-2xl mx-auto py-20">
-              <div className="mb-8">
-                <div className="mx-auto h-20 w-20 rounded-2xl bg-secondary/40 flex items-center justify-center shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
-                  <span className="text-3xl text-foreground">✟</span>
+            <div className="flex flex-col items-center justify-center text-center px-4 max-w-2xl mx-auto py-8 md:py-20">
+              <div className="mb-4 md:mb-8">
+                <div className="mx-auto h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-secondary/40 flex items-center justify-center shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+                  <span className="text-2xl md:text-3xl text-foreground">✟</span>
                 </div>
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2 md:mb-4 text-foreground">
                 첫 질문을 입력해보세요
               </h2>
-              <p className="text-base text-muted-foreground leading-relaxed">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                 질문을 입력하면 관련 성경 본문과 함께 답변을 제공해드립니다.
               </p>
             </div>

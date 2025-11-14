@@ -346,6 +346,18 @@ LangGraph 관련 코드는 `app/langgraph/` 폴더에 직접 구현하시면 됩
 - 벡터 DB 적재 스크립트는 텍스트를 500자 청크로 분할하며, 50자씩 겹치도록 설정되어 있습니다.
 - RAG 서비스는 유사도 임계값 0.7을 사용하여 상위 5개의 문서를 검색합니다.
 
+## Mobile Responsiveness Checklist
+
+UI 수정 전에 반드시 [docs/mobile-responsive-checklist.md](docs/mobile-responsive-checklist.md)를 확인하세요.  
+특히 아래 항목을 항상 점검합니다.
+
+- DevTools에서 iPhone / Galaxy Fold 등 초소형 뷰포트 테스트
+- 고정 폭/높이, 고정 margin/absolute 포지션이 없는지 확인
+- 스크롤 컨테이너는 `#main-content (data-scroll-container="chat")` 한 곳만 사용
+- 긴 텍스트/URL이 자연스럽게 줄바꿈되는지 확인
+
+체크리스트를 통과하지 않은 변경 사항은 머지하지 말고 보완하거나 후속 이슈를 남깁니다.
+
 ## 성경 본문 출처
 
 본 시스템에서 사용하는 성경 본문은 다음과 같습니다:

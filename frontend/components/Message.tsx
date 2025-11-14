@@ -73,7 +73,7 @@ export default function Message({ message, index }: MessageProps) {
       className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} ${isMounted ? 'opacity-100' : 'opacity-0'} transition-opacity duration-150`}
     >
       <div
-        className={`relative max-w-[65%] md:max-w-[60%] rounded-xl p-4 md:p-5 transition-all duration-150 ${
+        className={`relative max-w-[90%] sm:max-w-[80%] md:max-w-[60%] rounded-xl p-3 sm:p-4 md:p-5 transition-all duration-150 ${
           message.isUser
             ? 'bg-primary shadow-md'
             : 'bg-white text-foreground shadow-sm border border-border/50'
@@ -87,17 +87,17 @@ export default function Message({ message, index }: MessageProps) {
           </div>
         ) : (
           <div 
-            className="prose prose-sm md:prose-base max-w-none leading-relaxed mb-2"
+            className="prose prose-sm md:prose-base max-w-none leading-relaxed mb-2 break-words"
             style={message.isUser ? { color: '#FFFFFF' } : undefined}
           >
             {message.isUser ? (
-              <p className="whitespace-pre-wrap" style={{ color: '#FFFFFF' }}>
+              <p className="whitespace-pre-wrap break-words" style={{ color: '#FFFFFF' }}>
                 {message.text}
               </p>
             ) : (
               <ReactMarkdown
                 components={{
-                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  p: ({ children }) => <p className="mb-2 last:mb-0 break-words">{children}</p>,
                   h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
                   h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
                   h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-2 first:mt-0">{children}</h3>,
@@ -133,7 +133,7 @@ export default function Message({ message, index }: MessageProps) {
                       href={href} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-primary underline hover:text-primary/80"
+                      className="text-primary underline hover:text-primary/80 break-all"
                     >
                       {children}
                     </a>

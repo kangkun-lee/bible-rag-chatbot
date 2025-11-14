@@ -46,12 +46,12 @@ interface SuggestionCardsProps {
 export default function SuggestionCards({ onSelect }: SuggestionCardsProps) {
   return (
     <div className="w-full">
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3" style={{ WebkitOverflowScrolling: 'touch' }}>
         {suggestions.map((suggestion) => (
           <button
             key={suggestion.id}
             onClick={() => onSelect(suggestion.title)}
-            className="flex-shrink-0 glass px-5 py-4 rounded-xl hover:bg-secondary/30 transition-all duration-200 text-left min-w-[200px] md:min-w-[220px] group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="flex-shrink-0 glass px-4 sm:px-5 py-4 rounded-xl hover:bg-secondary/30 transition-all duration-200 text-left w-[calc(100vw-2rem)] max-w-[200px] sm:min-w-[200px] md:min-w-[220px] group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation"
             aria-label={`${suggestion.title}: ${suggestion.description}`}
           >
             <div className="relative">

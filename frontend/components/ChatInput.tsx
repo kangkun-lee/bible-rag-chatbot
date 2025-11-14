@@ -322,7 +322,7 @@ export default function ChatInput({ onMessageSent, isLoading = false, disabled =
           <button
             type="submit"
             disabled={isLoading || !input.trim() || disabled}
-            className="inline-flex items-center gap-2 px-6 md:px-8 py-4 md:py-5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-all duration-200 text-base md:text-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-md min-h-[56px] md:min-h-[64px]"
+            className="inline-flex items-center gap-2 px-4 sm:px-6 md:px-8 py-4 md:py-5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-all duration-200 text-sm sm:text-base md:text-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-md min-h-[56px] md:min-h-[64px]"
             aria-label={isLoading ? '응답 생성 중' : '전송'}
           >
             <span>{isLoading ? '생성 중…' : '전송'}</span>

@@ -104,12 +104,13 @@ export default function BibleMention({ isOpen, onClose, onSelect, searchQuery = 
   const popupContent = (
     <div
       ref={popupRef}
-      className={`${positioningClass} bg-white border border-border rounded-xl shadow-[0_18px_36px_rgba(15,23,42,0.12)] overflow-hidden min-w-[280px] max-w-[320px]`}
+      className={`${positioningClass} bg-white border border-border rounded-xl shadow-[0_18px_36px_rgba(15,23,42,0.12)] overflow-hidden w-[calc(100vw-16px)] max-w-[320px] sm:min-w-[280px]`}
       style={position ? { 
         top: `${Math.max(8, Math.min(position.top, window.innerHeight - 320))}px`, 
-        left: `${Math.max(8, Math.min(position.left, window.innerWidth - 320))}px`,
+        left: `${Math.max(8, Math.min(position.left, Math.min(window.innerWidth - 16, window.innerWidth - 320)))}px`,
         position: 'fixed',
-        zIndex: 99999
+        zIndex: 99999,
+        maxWidth: `${Math.min(320, window.innerWidth - 16)}px`
       } : undefined}
     >
       <div className="max-h-[300px] overflow-y-auto">

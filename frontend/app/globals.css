@@ -185,6 +185,7 @@ button.bg-foreground:active,
 }
 
 /* 사이드바 전용 강한 그림자 효과 */
+/* 사이드바 transform 강제 적용 */
 aside.glass-strong {
   box-shadow: 
     /* 오른쪽으로 강한 그림자 - 깊이감 표현 */
