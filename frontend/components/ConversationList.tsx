@@ -147,11 +147,21 @@ export default function ConversationList({ onSelectConversation, selectedConvers
   }, [searchQuery, allConversations])
 
   useEffect(() => {
+    // 초기 로드 시 대화 목록 조회
     fetchConversations()
     
-    // 주기적으로 대화 목록 갱신 (1분마다 - 성능 개선)
-    const interval = setInterval(fetchConversations, 60000)
-    return () => clearInterval(interval)
+    // 페이지가 다시 포커스를 받았을 때만 갱신 (다른 탭에서 대화를 생성했을 수 있음)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchConversations()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const formatDate = (dateString: string) => {
