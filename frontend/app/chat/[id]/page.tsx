@@ -1,21 +1,34 @@
 'use client'
 
+import Chat from '../../../components/Chat'
+import ChatInput from '../../../components/ChatInput'
+import ThemeToggle from '../../../components/ThemeToggle'
+import ConversationList from '../../../components/ConversationList'
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import Chat from '../components/Chat'
-import ChatInput from '../components/ChatInput'
-import ThemeToggle from '../components/ThemeToggle'
-import ConversationList from '../components/ConversationList'
+import { useRouter, useParams } from 'next/navigation'
 
-export default function Home() {
+export default function ChatPage() {
   const router = useRouter()
+  const params = useParams()
+  const conversationIdFromUrl = params?.id as string | undefined
+  
   const [inputMessage, setInputMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(conversationIdFromUrl || null)
   const [conversationMessages, setConversationMessages] = useState<any[]>([])
   // 초기 상태: SSR과 클라이언트 일치를 위해 항상 false로 시작
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+
+  // URL의 conversation ID와 상태 동기화
+  useEffect(() => {
+    if (conversationIdFromUrl && conversationIdFromUrl !== selectedConversationId) {
+      setSelectedConversationId(conversationIdFromUrl)
+    } else if (!conversationIdFromUrl && selectedConversationId) {
+      // URL에 ID가 없는데 상태에 ID가 있으면 URL 업데이트
+      router.replace(`/chat/${selectedConversationId}`)
+    }
+  }, [conversationIdFromUrl, selectedConversationId, router])
 
   // 모바일에서 사이드바는 기본적으로 닫혀있어야 함
   useEffect(() => {
@@ -73,9 +86,11 @@ export default function Home() {
 
   const handleConversationIdChange = (conversationId: string | null) => {
     setSelectedConversationId(conversationId)
-    // 새 대화가 생성되면 URL 업데이트
+    // URL 업데이트
     if (conversationId) {
       router.push(`/chat/${conversationId}`, { scroll: false })
+    } else {
+      router.push('/', { scroll: false })
     }
   }
 
@@ -83,10 +98,11 @@ export default function Home() {
     setSelectedConversationId(conversationId)
     // URL 업데이트
     router.push(`/chat/${conversationId}`, { scroll: false })
+    
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)
     }
-    // 메시지 로딩 시작 (스켈레톤 UI 표시를 위해 빈 배열로 시작하지 않음)
+    // 메시지 로딩 시작
     setConversationMessages([])
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}/messages`, {
@@ -109,7 +125,8 @@ export default function Home() {
     setSelectedConversationId(null)
     setConversationMessages([])
     setInputMessage(null)
-    // URL은 루트로 유지 (이미 루트에 있음)
+    // URL을 루트로 변경
+    router.push('/', { scroll: false })
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)
     }
@@ -120,16 +137,17 @@ export default function Home() {
     if (selectedConversationId) {
       setSelectedConversationId(null)
       setConversationMessages([])
-      // URL은 루트로 유지 (이미 루트에 있음)
+      // URL을 루트로 변경
+      router.push('/', { scroll: false })
     }
   }
 
   // 대화 선택 시 메시지 로드
   useEffect(() => {
-    if (selectedConversationId) {
+    if (selectedConversationId && selectedConversationId === conversationIdFromUrl) {
       handleSelectConversation(selectedConversationId)
     }
-  }, [selectedConversationId])
+  }, [selectedConversationId, conversationIdFromUrl])
 
   // Escape 키로 사이드바 닫기 (모바일)
   useEffect(() => {
@@ -407,3 +425,4 @@ export default function Home() {
     </main>
   )
 }
+

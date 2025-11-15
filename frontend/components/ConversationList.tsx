@@ -18,17 +18,45 @@ interface ConversationListProps {
 
 export default function ConversationList({ onSelectConversation, selectedConversationId, onConversationDeleted }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [allConversations, setAllConversations] = useState<Conversation[]>([]) // 전체 대화 목록 (검색용)
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // 검색어로 대화 필터링
+  const filterConversations = (conversationsToFilter: Conversation[], query: string) => {
+    if (!query.trim()) {
+      setConversations(conversationsToFilter)
+      return
+    }
+
+    const lowerQuery = query.toLowerCase().trim()
+    const filtered = conversationsToFilter.filter(conv => {
+      const title = (conv.metadata?.title || '').toLowerCase()
+      const firstMessage = (conv.first_message || '').toLowerCase()
+      return title.includes(lowerQuery) || firstMessage.includes(lowerQuery)
+    })
+    setConversations(filtered)
+  }
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations`)
+      setIsLoading(true)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations`, {
+        // 캐싱 헤더 추가 (5분간 캐시)
+        cache: 'default',
+        headers: {
+          'Cache-Control': 'max-age=300',
+        },
+      })
       if (response.ok) {
         const data = await response.json()
-        setConversations(data.conversations || [])
+        const fetchedConversations = data.conversations || []
+        setAllConversations(fetchedConversations)
+        // 검색어가 있으면 필터링, 없으면 전체 표시
+        filterConversations(fetchedConversations, searchQuery)
       }
     } catch (error) {
       console.error('대화 목록 조회 오류:', error)
@@ -49,7 +77,8 @@ export default function ConversationList({ onSelectConversation, selectedConvers
       })
       
       if (response.ok) {
-        // 목록에서 제거
+        // 전체 목록과 필터링된 목록 모두 업데이트
+        setAllConversations(prev => prev.filter(conv => conv.id !== conversationId))
         setConversations(prev => prev.filter(conv => conv.id !== conversationId))
         if (onConversationDeleted) {
           onConversationDeleted()
@@ -89,12 +118,14 @@ export default function ConversationList({ onSelectConversation, selectedConvers
       })
       
       if (response.ok) {
-        // 목록 업데이트
-        setConversations(prev => prev.map(conv => 
+        // 전체 목록과 필터링된 목록 모두 업데이트
+        const updateConversation = (conv: Conversation) => 
           conv.id === conversationId 
             ? { ...conv, metadata: { ...conv.metadata, title: editTitle.trim() } }
             : conv
-        ))
+        
+        setAllConversations(prev => prev.map(updateConversation))
+        setConversations(prev => prev.map(updateConversation))
         setEditingId(null)
         setEditTitle('')
       } else {
@@ -106,11 +137,20 @@ export default function ConversationList({ onSelectConversation, selectedConvers
     }
   }
 
+  // 검색어 변경 시 필터링 (debounce 적용)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      filterConversations(allConversations, searchQuery)
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timer)
+  }, [searchQuery, allConversations])
+
   useEffect(() => {
     fetchConversations()
     
-    // 주기적으로 대화 목록 갱신 (30초마다)
-    const interval = setInterval(fetchConversations, 30000)
+    // 주기적으로 대화 목록 갱신 (1분마다 - 성능 개선)
+    const interval = setInterval(fetchConversations, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -138,13 +178,23 @@ export default function ConversationList({ onSelectConversation, selectedConvers
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="loader"></div>
+      <div className="space-y-1">
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className="w-full px-3 py-2.5 rounded-xl bg-secondary/20 animate-pulse"
+            style={{ minHeight: '60px' }}
+          >
+            <div className="h-3 bg-secondary/40 rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-secondary/40 rounded w-full"></div>
+            <div className="h-4 bg-secondary/40 rounded w-3/4 mt-1"></div>
+          </div>
+        ))}
       </div>
     )
   }
 
-  if (conversations.length === 0) {
+  if (!isLoading && allConversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full rounded-2xl border border-dashed border-border/70 bg-secondary/20 text-muted-foreground text-sm px-4 py-6">
         아직 저장된 대화가 없습니다.
@@ -154,6 +204,64 @@ export default function ConversationList({ onSelectConversation, selectedConvers
 
   return (
     <div className="space-y-1">
+      {/* 검색 입력 필드 */}
+      <div className="mb-3 px-2">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="대화 검색..."
+            className="w-full px-3 py-2 pl-9 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 placeholder:text-muted-foreground"
+          />
+          <svg
+            className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-2 p-1 rounded hover:bg-secondary/50 transition-colors"
+              aria-label="검색어 지우기"
+            >
+              <svg
+                className="w-4 h-4 text-muted-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-1.5 text-xs text-muted-foreground px-1">
+            {conversations.length}개의 대화를 찾았습니다
+          </p>
+        )}
+      </div>
+
+      {/* 검색 결과가 없을 때 */}
+      {!isLoading && searchQuery && conversations.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-8 rounded-2xl border border-dashed border-border/70 bg-secondary/20 text-muted-foreground text-sm px-4">
+          <svg
+            className="w-8 h-8 mb-2 text-muted-foreground/50"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p>검색 결과가 없습니다</p>
+        </div>
+      )}
+
+      {/* 대화 목록 */}
       {conversations.map((conversation) => (
         <div
           key={conversation.id}

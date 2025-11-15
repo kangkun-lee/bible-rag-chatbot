@@ -287,9 +287,9 @@ export default function ChatInput({ onMessageSent, isLoading = false, disabled =
     >
       <div ref={containerRef} className="relative w-full overflow-visible">
         <div
-          className={`group flex items-center gap-3 rounded-2xl border border-border/70 bg-white/95 backdrop-blur-sm px-4 py-3 md:px-6 md:py-4 shadow-[0_18px_36px_rgba(15,23,42,0.12)] transition-all duration-200 ${
-          disabled ? 'opacity-75 cursor-not-allowed' : ''
-        }`}
+          className={`group flex items-center gap-3 rounded-2xl border border-border/70 bg-secondary/80 dark:bg-secondary/60 backdrop-blur-sm px-4 py-3 md:px-6 md:py-4 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:shadow-[0_18px_36px_rgba(0,0,0,0.3)] transition-all duration-200 ${
+            disabled ? 'opacity-75 cursor-not-allowed' : ''
+          }`}
         >
           <button
             ref={buttonRef}
@@ -310,7 +310,7 @@ export default function ChatInput({ onMessageSent, isLoading = false, disabled =
             onKeyDown={handleKeyDown}
             placeholder="질문을 입력하세요... (예: 창세기 1:1 의미)"
             rows={1}
-            className="flex-1 px-5 py-4 md:py-5 bg-white border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200 placeholder:text-muted-foreground text-foreground text-base md:text-lg font-medium min-h-[56px] md:min-h-[64px] shadow-sm disabled:bg-muted/50 disabled:cursor-not-allowed resize-none overflow-y-auto leading-relaxed"
+            className="flex-1 px-5 py-4 md:py-5 bg-background dark:bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200 placeholder:text-muted-foreground text-foreground text-base md:text-lg font-medium min-h-[56px] md:min-h-[64px] shadow-sm disabled:bg-muted/50 disabled:cursor-not-allowed resize-none overflow-y-auto leading-relaxed"
             disabled={disabled}
             aria-label="질문 입력"
             aria-required="true"
