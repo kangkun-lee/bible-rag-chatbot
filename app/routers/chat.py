@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatRequest, ChatResponse
-from app.langgraph.graph import agent
+from app.langgraph.graph import agent, llm
 from app.services.conversation_service import conversation_service
 from langchain_core.messages import HumanMessage, AIMessage
 import re
@@ -194,8 +194,13 @@ async def chat_stream(request: ChatRequest):
             # 초기 메타데이터 전송
             yield f"data: {json.dumps({'type': 'start', 'conversation_id': conversation_id}, ensure_ascii=False)}\n\n"
             
+            # 서버리스 환경에서 연결 확인을 위한 초기 heartbeat
+            yield f": heartbeat\n\n"
+            
             accumulated_text = ""
             sources = []
+            event_count = 0
+            has_streamed = False
             
             # 사용자 메시지 저장 (비동기로 실행, 스트리밍과 병렬)
             async def save_user_message():
@@ -220,11 +225,17 @@ async def chat_stream(request: ChatRequest):
                 {"messages": all_messages},
                 version="v1"
             ):
+                event_count += 1
                 event_type = event.get("event")
                 event_name = event.get("name", "")
                 
+                # 첫 이벤트가 도착했는지 확인 (디버깅용)
+                if event_count == 1:
+                    yield f": first_event_received\n\n"
+                
                 # LLM 스트리밍 이벤트 처리 (여러 이벤트 타입 지원)
                 if event_type in ["on_chat_model_stream", "on_llm_stream", "on_llm_new_token"]:
+                    has_streamed = True
                     data = event.get("data", {})
                     
                     # on_llm_new_token의 경우 chunk가 문자열일 수 있음
@@ -338,7 +349,16 @@ async def chat_stream(request: ChatRequest):
                         for msg in output["messages"]:
                             if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
                                 content = msg.content
-                                if isinstance(content, str) and content and content != accumulated_text:
+                                # 스트리밍이 전혀 발생하지 않은 경우 전체 텍스트를 한 번에 전송
+                                if not has_streamed and isinstance(content, str) and content:
+                                    # 전체 텍스트를 작은 청크로 나누어 스트리밍 효과 생성
+                                    chunk_size = 10
+                                    for i in range(0, len(content), chunk_size):
+                                        chunk = content[i:i+chunk_size]
+                                        yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
+                                        accumulated_text += chunk
+                                    has_streamed = True
+                                elif isinstance(content, str) and content and content != accumulated_text:
                                     new_text = content[len(accumulated_text):] if content.startswith(accumulated_text) else content
                                     if new_text:
                                         yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
@@ -371,9 +391,11 @@ async def chat_stream(request: ChatRequest):
         generate(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Nginx 버퍼링 비활성화
+            "X-Accel-Buffering": "no",  # Nginx 버퍼링 비활성화
+            "Transfer-Encoding": "chunked",  # 청크 전송 활성화
+            "X-Content-Type-Options": "nosniff",  # MIME 타입 스니핑 방지
         }
     )
 

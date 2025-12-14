@@ -62,14 +62,38 @@ export async function* sendMessageStream(
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    
-    // 503 에러 (서비스 과부하) 처리
-    if (response.status === 503) {
-      const errorMessage = errorText.includes('overloaded') 
-        ? 'AI 모델이 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해주세요.'
-        : '서비스가 일시적으로 사용 불가능합니다. 잠시 후 다시 시도해주세요.'
-      throw new Error(errorMessage)
+    // 스트리밍 응답이 아닌 경우에만 text() 호출
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('text/event-stream')) {
+      // 스트리밍 에러 응답인 경우 reader로 처리
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      if (reader) {
+        try {
+          const { done, value } = await reader.read()
+          if (!done && value) {
+            const errorText = decoder.decode(value, { stream: true })
+            // 에러 메시지 파싱 시도
+            if (errorText.includes('overloaded') || errorText.includes('503') || errorText.includes('The model is overloaded')) {
+              throw new Error('AI 모델이 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해주세요.')
+            }
+            throw new Error(`Failed to start stream: ${response.status} ${response.statusText}`)
+          }
+        } finally {
+          reader.releaseLock()
+        }
+      }
+    } else {
+      // 일반 에러 응답
+      const errorText = await response.text()
+      
+      // 503 에러 (서비스 과부하) 처리
+      if (response.status === 503) {
+        const errorMessage = errorText.includes('overloaded') 
+          ? 'AI 모델이 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해주세요.'
+          : '서비스가 일시적으로 사용 불가능합니다. 잠시 후 다시 시도해주세요.'
+        throw new Error(errorMessage)
+      }
     }
     
     throw new Error(`Failed to start stream: ${response.status} ${response.statusText}`)
