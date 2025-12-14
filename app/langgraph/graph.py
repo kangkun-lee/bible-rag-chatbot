@@ -48,6 +48,140 @@ KOREAN_BOOK_NAMES = [
     "유다서", "요한계시록"
 ]
 
+# 책 이름 약자 매핑 (66권 전체)
+BOOK_NAME_ABBREVIATIONS = {
+    # 구약 (39권)
+    "창": "창세기",
+    "출": "출애굽기",
+    "레": "레위기",
+    "민": "민수기",
+    "신": "신명기",
+    "수": "여호수아",
+    "삿": "사사기",
+    "룻": "룻기",
+    "삼상": "사무엘상",
+    "삼하": "사무엘하",
+    "왕상": "열왕기상",
+    "왕하": "열왕기하",
+    "대상": "역대상",
+    "대하": "역대하",
+    "스": "에스라",
+    "느": "느헤미야",
+    "에": "에스더",
+    "욥": "욥기",
+    "시": "시편",
+    "잠": "잠언",
+    "전": "전도서",
+    "아": "아가",
+    "사": "이사야",
+    "렘": "예레미야",
+    "애": "예레미야애가",
+    "애가": "예레미야애가",
+    "겔": "에스겔",
+    "단": "다니엘",
+    "호": "호세아",
+    "욜": "요엘",
+    "암": "아모스",
+    "옵": "오바댜",
+    "욘": "요나",
+    "미": "미가",
+    "나": "나훔",
+    "합": "하박국",
+    "습": "스바냐",
+    "학": "학개",
+    "슥": "스가랴",
+    "말": "말라기",
+    # 신약 (27권)
+    "마": "마태복음",
+    "막": "마가복음",
+    "눅": "누가복음",
+    "요": "요한복음",
+    "행": "사도행전",
+    "롬": "로마서",
+    "고전": "고린도전서",
+    "고후": "고린도후서",
+    "갈": "갈라디아서",
+    "엡": "에베소서",
+    "빌": "빌립보서",
+    "골": "골로새서",
+    "살전": "데살로니가전서",
+    "살후": "데살로니가후서",
+    "딤전": "디모데전서",
+    "딤후": "디모데후서",
+    "딛": "디도서",
+    "몬": "빌레몬서",
+    "히": "히브리서",
+    "약": "야고보서",
+    "벧전": "베드로전서",
+    "벧후": "베드로후서",
+    "요일": "요한일서",
+    "요이": "요한이서",
+    "요삼": "요한삼서",
+    "유": "유다서",
+    "계": "요한계시록",
+}
+
+def normalize_book_name(book_part: str) -> str:
+    """
+    책 이름 약자를 정식 이름으로 변환합니다.
+    
+    Args:
+        book_part: 책 이름 또는 약자
+        
+    Returns:
+        정식 책 이름 (약자가 아니면 그대로 반환)
+    """
+    book_part = book_part.strip()
+    # 약자 매핑 확인
+    if book_part in BOOK_NAME_ABBREVIATIONS:
+        return BOOK_NAME_ABBREVIATIONS[book_part]
+    # 약자가 아니면 그대로 반환
+    return book_part
+
+def is_verse_in_range(verse: str, verse_range: str) -> bool:
+    """
+    특정 절이 절 범위에 포함되는지 확인합니다.
+    
+    Args:
+        verse: 찾고자 하는 절 번호 (예: "130")
+        verse_range: 절 범위 (예: "1-176", "130", "1,2,3")
+        
+    Returns:
+        절이 범위에 포함되면 True, 아니면 False
+    """
+    if not verse or not verse_range:
+        return False
+    
+    try:
+        verse_num = int(verse)
+    except ValueError:
+        # 숫자가 아니면 문자열 매칭
+        return verse in verse_range
+    
+    # 범위 형식 파싱 (예: "1-176", "130", "1,2,3")
+    if '-' in verse_range:
+        # 범위 형식 (예: "1-176")
+        parts = verse_range.split('-')
+        if len(parts) == 2:
+            try:
+                min_verse = int(parts[0].strip())
+                max_verse = int(parts[1].strip())
+                return min_verse <= verse_num <= max_verse
+            except ValueError:
+                pass
+    elif ',' in verse_range:
+        # 콤마로 구분된 형식 (예: "1,2,3")
+        verse_list = [v.strip() for v in verse_range.split(',')]
+        return verse in verse_list or str(verse_num) in verse_list
+    else:
+        # 단일 절 번호 (예: "130")
+        try:
+            return verse_num == int(verse_range.strip())
+        except ValueError:
+            return verse == verse_range.strip()
+    
+    return False
+
 def parse_bible_reference(query: str) -> tuple[str | None, str | None, str | None, bool]:
     """
     쿼리에서 책 이름, 장, 절을 파싱합니다.
@@ -75,16 +209,33 @@ def parse_bible_reference(query: str) -> tuple[str | None, str | None, str | Non
         verse = colon_match.group(2)
         # 콜론 앞의 책 이름 찾기
         book_part = query[:colon_match.start()].strip()
+        # 약자를 정식 이름으로 변환
+        normalized_book_part = normalize_book_name(book_part)
+        # 정식 이름이 KOREAN_BOOK_NAMES에 있는지 확인
+        if normalized_book_part in KOREAN_BOOK_NAMES:
+            return (normalized_book_part, chapter, verse, False)
+        # 약자 변환 후에도 없으면 원본으로 다시 시도
         for book in KOREAN_BOOK_NAMES:
             if book in book_part:
                 return (book, chapter, verse, False)
     
     # 책 이름 찾기
     found_book = None
-    for book in sorted(KOREAN_BOOK_NAMES, key=len, reverse=True):  # 긴 이름부터 매칭
-        if book in query:
-            found_book = book
+    # 먼저 약자로 시작하는 패턴 확인 (예: "시 119:130"에서 "시" 추출)
+    # 단어 경계를 고려하여 약자 매칭 시도
+    for abbrev, full_name in BOOK_NAME_ABBREVIATIONS.items():
+        # 약자가 쿼리의 시작 부분이나 단어 경계에 있는지 확인
+        abbrev_pattern = r'\b' + re.escape(abbrev) + r'\b'
+        if re.search(abbrev_pattern, query):
+            found_book = full_name
             break
+    
+    # 약자로 찾지 못했으면 정식 이름으로 찾기
+    if not found_book:
+        for book in sorted(KOREAN_BOOK_NAMES, key=len, reverse=True):  # 긴 이름부터 매칭
+            if book in query:
+                found_book = book
+                break
     
     if not found_book:
         return (None, None, None, False)
@@ -170,7 +321,7 @@ def _search_bible_impl(query: str, limit: int = 5) -> str:
                             f"[{citation}] {doc.get('content', '')}"
                         )
                     return "\n\n".join(result_parts)
-            except Exception as filter_error:
+            except Exception:
                 # 필터링 실패 시 벡터 검색으로 폴백
                 pass
         
@@ -196,11 +347,39 @@ def _search_bible_impl(query: str, limit: int = 5) -> str:
                     docs = filtered_response.data
                     result_parts = []
                     for doc in docs:
-                        result_parts.append(
-                            f"[{book} {chapter}장] {doc.get('content', '')}"
-                        )
-                    return "\n\n".join(result_parts)
-            except Exception as filter_error:
+                        content = doc.get('content', '')
+                        doc_verse_range = doc.get('verse', '')
+                        citation = f"{book} {chapter}장"
+                        
+                        # 특정 절이 요청된 경우
+                        if verse:
+                            # verse 필드에 저장된 범위 확인
+                            if is_verse_in_range(verse, doc_verse_range):
+                                # content에서 해당 절 찾기 (content 형식이 "130:..." 형태)
+                                verse_pattern = rf'\b{verse}\s*[:：]\s*([^\d]+?)(?=\s*\d+\s*[:：]|$)'
+                                verse_match = re.search(verse_pattern, content)
+                                if verse_match:
+                                    verse_text = verse_match.group(1).strip()
+                                    citation += f" {verse}절"
+                                    result_parts.append(
+                                        f"[{citation}] {verse_text}"
+                                    )
+                                else:
+                                    # 절을 찾지 못했으면 전체 내용 반환 (절 번호 포함)
+                                    citation += f" {verse}절"
+                                    result_parts.append(
+                                        f"[{citation}] {content}"
+                                    )
+                            # verse 범위에 포함되지 않으면 해당 문서는 건너뜀
+                        else:
+                            # 절이 지정되지 않았으면 전체 장 내용 반환
+                            result_parts.append(
+                                f"[{citation}] {content}"
+                            )
+                    
+                    if result_parts:
+                        return "\n\n".join(result_parts)
+            except Exception:
                 # 필터링 실패 시 벡터 검색으로 폴백
                 pass
         

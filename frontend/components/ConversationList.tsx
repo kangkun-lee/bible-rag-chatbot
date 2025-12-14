@@ -14,9 +14,10 @@ interface ConversationListProps {
   onSelectConversation: (conversationId: string) => void
   selectedConversationId?: string | null
   onConversationDeleted?: () => void
+  onLoadingComplete?: () => void
 }
 
-export default function ConversationList({ onSelectConversation, selectedConversationId, onConversationDeleted }: ConversationListProps) {
+export default function ConversationList({ onSelectConversation, selectedConversationId, onConversationDeleted, onLoadingComplete }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [allConversations, setAllConversations] = useState<Conversation[]>([]) // 전체 대화 목록 (검색용)
   const [isLoading, setIsLoading] = useState(true)
@@ -62,6 +63,10 @@ export default function ConversationList({ onSelectConversation, selectedConvers
       console.error('대화 목록 조회 오류:', error)
     } finally {
       setIsLoading(false)
+      // 초기 로딩 완료 알림
+      if (onLoadingComplete) {
+        onLoadingComplete()
+      }
     }
   }
 

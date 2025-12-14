@@ -6,6 +6,7 @@ import Chat from '../components/Chat'
 import ChatInput from '../components/ChatInput'
 import ThemeToggle from '../components/ThemeToggle'
 import ConversationList from '../components/ConversationList'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function Home() {
   const router = useRouter()
@@ -16,6 +17,8 @@ export default function Home() {
   // 초기 상태: SSR과 클라이언트 일치를 위해 항상 false로 시작
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [conversationListLoaded, setConversationListLoaded] = useState(false)
 
   // 모바일에서 사이드바는 기본적으로 닫혀있어야 함
   useEffect(() => {
@@ -124,6 +127,18 @@ export default function Home() {
     }
   }
 
+  // 초기 로딩 완료 처리
+  useEffect(() => {
+    if (conversationListLoaded) {
+      // ConversationList 로딩 완료 후 짧은 지연으로 부드러운 전환
+      const timer = setTimeout(() => {
+        setIsInitialLoading(false)
+      }, 300)
+
+      return () => clearTimeout(timer)
+    }
+  }, [conversationListLoaded])
+
   // 대화 선택 시 메시지 로드
   useEffect(() => {
     if (selectedConversationId) {
@@ -143,17 +158,21 @@ export default function Home() {
   }, [isSidebarOpen, isDesktop])
 
   return (
-    <main
-      className="relative w-full h-[calc(var(--vh,1vh)*100)] flex flex-col md:flex-row bg-background overflow-hidden"
-      role="main"
-      suppressHydrationWarning
-      style={{ 
-        height: 'calc(var(--vh, 1vh) * 100)',
-        display: 'flex',
-        flexDirection: isDesktop ? 'row' : 'column',
-        position: 'relative'
-      }}
-    >
+    <>
+      {isInitialLoading && <LoadingScreen message="성경QA를 준비하는 중..." />}
+      <main
+        className="relative w-full h-[calc(var(--vh,1vh)*100)] flex flex-col md:flex-row bg-background overflow-hidden"
+        role="main"
+        suppressHydrationWarning
+        style={{ 
+          height: 'calc(var(--vh, 1vh) * 100)',
+          display: 'flex',
+          flexDirection: isDesktop ? 'row' : 'column',
+          position: 'relative',
+          opacity: isInitialLoading ? 0 : 1,
+          transition: 'opacity 0.3s ease-in-out'
+        }}
+      >
       {/* 스킵 링크 - 접근성 */}
       <a 
         href="#main-content" 
@@ -281,6 +300,7 @@ export default function Home() {
             onSelectConversation={handleSelectConversation}
             selectedConversationId={selectedConversationId}
             onConversationDeleted={handleConversationDeleted}
+            onLoadingComplete={() => setConversationListLoaded(true)}
           />
         </div>
 
@@ -405,5 +425,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </>
   )
 }

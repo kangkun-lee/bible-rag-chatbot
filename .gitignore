@@ -217,6 +217,8 @@ frontend/*.log
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+frontend/.env.local
+frontend/.env*.local
 
 # Marimo
 marimo/_static/

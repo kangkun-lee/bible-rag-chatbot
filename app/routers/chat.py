@@ -16,12 +16,23 @@ router = APIRouter(prefix="/api", tags=["chat"])
 async def chat(request: ChatRequest):
     """채팅 엔드포인트"""
     import asyncio
-    try:
-        # 대화 ID 생성 또는 조회 (없는 경우)
-        if not request.conversation_id:
-            conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
-        else:
-            conversation_id = request.conversation_id
+        try:
+            # 대화 ID 생성 또는 조회 (없는 경우)
+            # 빈 문자열이나 None인 경우도 새 대화로 처리
+            if not request.conversation_id or request.conversation_id.strip() == "":
+                conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
+            else:
+                # 기존 대화 ID 검증 (존재하는지 확인)
+                try:
+                    messages = await asyncio.to_thread(
+                        conversation_service.get_conversation_messages,
+                        request.conversation_id,
+                        limit=1
+                    )
+                    conversation_id = request.conversation_id
+                except Exception:
+                    # 대화가 존재하지 않으면 새로 생성
+                    conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
         
         # 이전 대화 메시지 가져오기 (멀티턴 대화 지원) - 먼저 로드
         previous_messages: List = []
@@ -143,10 +154,21 @@ async def chat_stream(request: ChatRequest):
         import asyncio
         try:
             # 대화 ID 생성 또는 조회 (없는 경우)
-            if not request.conversation_id:
+            # 빈 문자열이나 None인 경우도 새 대화로 처리
+            if not request.conversation_id or request.conversation_id.strip() == "":
                 conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
             else:
-                conversation_id = request.conversation_id
+                # 기존 대화 ID 검증 (존재하는지 확인)
+                try:
+                    messages = await asyncio.to_thread(
+                        conversation_service.get_conversation_messages,
+                        request.conversation_id,
+                        limit=1
+                    )
+                    conversation_id = request.conversation_id
+                except Exception:
+                    # 대화가 존재하지 않으면 새로 생성
+                    conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
             
             # 이전 대화 메시지 가져오기 (멀티턴 대화 지원) - 먼저 로드
             previous_messages: List = []
@@ -321,25 +343,12 @@ async def get_conversations(limit: int = 50):
     """대화 목록 조회 (각 대화의 첫 번째 사용자 메시지 포함)"""
     import asyncio
     try:
+        # 최적화된 메서드로 한 번에 조회 (N+1 문제 해결)
         conversations = await asyncio.to_thread(
             conversation_service.get_user_conversations,
             user_id=None,  # 향후 인증 추가 시 수정
             limit=limit
         )
-        
-        # 각 대화의 첫 번째 사용자 메시지를 가져와서 제목으로 사용
-        for conv in conversations:
-            messages = await asyncio.to_thread(
-                conversation_service.get_conversation_messages,
-                conversation_id=conv["id"],
-                limit=1
-            )
-            if messages:
-                first_msg = messages[0]
-                if first_msg.get("role") == "user":
-                    # 첫 번째 사용자 메시지의 첫 50자를 제목으로 사용
-                    content = first_msg.get("content", "")
-                    conv["first_message"] = content[:50] + ("..." if len(content) > 50 else "")
         
         return {"conversations": conversations}
     except Exception as e:

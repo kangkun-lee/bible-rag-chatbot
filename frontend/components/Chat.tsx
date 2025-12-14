@@ -616,7 +616,8 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
       setMessages((prev) => [...prev, loadingMessage])
 
       let accumulatedText = ''
-      let conversationId = conversationIdRef.current
+      // 새 대화인 경우 null로 설정하여 백엔드에서 새 ID 생성 보장
+      let conversationId = conversationIdRef.current || null
       let streamCompleted = false
       let firstTokenReceived = false
 
@@ -627,8 +628,9 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
               conversationId = event.conversation_id
               conversationIdRef.current = conversationId
               skipInitialLoadRef.current = true
-              // 상위 컴포넌트에 conversation_id 전달
+              // 상위 컴포넌트에 conversation_id 전달 (URL 업데이트 보장)
               if (onConversationIdChange) {
+                // 즉시 URL 업데이트를 위해 콜백 호출
                 onConversationIdChange(conversationId)
               }
             }

@@ -96,10 +96,23 @@ def parse_xml_bible(xml_path: Path) -> List[Dict]:
                     verse_texts = [f"{v['verse']}:{v['text']}" for v in verses]
                     content = " ".join(verse_texts)
                     
+                    # 절 범위 계산 (예: "1-176" 또는 "1,2,3")
+                    verse_numbers = [int(v['verse']) for v in verses if v['verse'].isdigit()]
+                    if verse_numbers:
+                        min_verse = min(verse_numbers)
+                        max_verse = max(verse_numbers)
+                        if min_verse == max_verse:
+                            verse_range = str(min_verse)
+                        else:
+                            verse_range = f"{min_verse}-{max_verse}"
+                    else:
+                        # 숫자가 아닌 절 번호가 있는 경우 모든 절 번호를 콤마로 구분
+                        verse_range = ",".join([v['verse'] for v in verses])
+                    
                     documents.append({
                         "book": book_name,
                         "chapter": chapter_number,
-                        "verse": "",  # 전체 장이므로 절 번호는 비움
+                        "verse": verse_range,  # 절 범위 저장 (예: "1-176")
                         "content": content
                     })
         
