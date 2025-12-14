@@ -38,7 +38,7 @@ interface ChatProps {
       content: string
     }>
   }>
-  onConversationIdChange?: (conversationId: string | null) => void
+  onConversationIdChange?: (conversationId: string | null, options?: { skipAutoFetch?: boolean }) => void
 }
 
 export default function Chat({ initialMessage, onMessageSent, onLoadingChange, showMessages = true, showInput = true, externalMessage, conversationId, initialMessages, onConversationIdChange }: ChatProps) {
@@ -153,11 +153,16 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
               if (event.type === 'start') {
                 if (event.conversation_id) {
                   currentConversationId = event.conversation_id
+                  const previousConversationId = conversationIdRef.current
                   conversationIdRef.current = currentConversationId
-                skipInitialLoadRef.current = true
+                  skipInitialLoadRef.current = true
                   // 상위 컴포넌트에 conversation_id 전달
-                  if (onConversationIdChange) {
-                    onConversationIdChange(currentConversationId)
+                  if (
+                    onConversationIdChange &&
+                    currentConversationId &&
+                    currentConversationId !== previousConversationId
+                  ) {
+                    onConversationIdChange(currentConversationId, { skipAutoFetch: true })
                   }
                 }
               } else if (event.type === 'token' && event.content) {
@@ -309,11 +314,16 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
               if (event.type === 'start') {
                 if (event.conversation_id) {
                   currentConversationId = event.conversation_id
+                  const previousConversationId = conversationIdRef.current
                   conversationIdRef.current = currentConversationId
-              skipInitialLoadRef.current = true
+                  skipInitialLoadRef.current = true
                   // 상위 컴포넌트에 conversation_id 전달
-                  if (onConversationIdChange) {
-                    onConversationIdChange(currentConversationId)
+                  if (
+                    onConversationIdChange &&
+                    currentConversationId &&
+                    currentConversationId !== previousConversationId
+                  ) {
+                    onConversationIdChange(currentConversationId, { skipAutoFetch: true })
                   }
                 }
               } else if (event.type === 'token' && event.content) {
@@ -559,12 +569,17 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           if (event.type === 'start') {
             if (event.conversation_id) {
               currentConversationId = event.conversation_id
+              const previousConversationId = conversationIdRef.current
               conversationIdRef.current = currentConversationId
               skipInitialLoadRef.current = true
               // 상위 컴포넌트에 conversation_id 전달 (URL 업데이트 보장)
-              if (onConversationIdChange) {
+              if (
+                onConversationIdChange &&
+                currentConversationId &&
+                currentConversationId !== previousConversationId
+              ) {
                 // 즉시 URL 업데이트를 위해 콜백 호출
-                onConversationIdChange(currentConversationId)
+                onConversationIdChange(currentConversationId, { skipAutoFetch: true })
               }
             }
           } else if (event.type === 'token' && event.content) {

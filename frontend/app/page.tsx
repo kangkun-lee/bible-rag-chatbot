@@ -19,6 +19,7 @@ export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [conversationListLoaded, setConversationListLoaded] = useState(false)
+  const skipAutoFetchRef = useRef(false)
 
   // 모바일에서 사이드바는 기본적으로 닫혀있어야 함
   useEffect(() => {
@@ -73,7 +74,10 @@ export default function Home() {
     setIsLoading(loading)
   }
 
-  const handleConversationIdChange = (conversationId: string | null) => {
+  const handleConversationIdChange = (conversationId: string | null, options?: { skipAutoFetch?: boolean }) => {
+    if (options?.skipAutoFetch) {
+      skipAutoFetchRef.current = true
+    }
     setSelectedConversationId(conversationId)
     // 새 대화가 생성되면 URL 업데이트 (Vercel/Render 배포 환경 대응)
     if (conversationId) {
@@ -87,6 +91,7 @@ export default function Home() {
   }
 
   const handleSelectConversation = async (conversationId: string) => {
+    skipAutoFetchRef.current = true
     setSelectedConversationId(conversationId)
     // URL 업데이트 (Vercel/Render 배포 환경 대응)
     const newUrl = `/chat/${conversationId}`
@@ -148,9 +153,14 @@ export default function Home() {
 
   // 대화 선택 시 메시지 로드
   useEffect(() => {
-    if (selectedConversationId) {
-      handleSelectConversation(selectedConversationId)
+    if (!selectedConversationId) {
+      return
     }
+    if (skipAutoFetchRef.current) {
+      skipAutoFetchRef.current = false
+      return
+    }
+    handleSelectConversation(selectedConversationId)
   }, [selectedConversationId])
 
   // Escape 키로 사이드바 닫기 (모바일)

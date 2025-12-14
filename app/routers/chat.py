@@ -301,21 +301,23 @@ async def chat_stream(request: ChatRequest):
                     elif event_type == "on_chain_end" and event_name == "RunnableAgent":
                         output = event.get("data", {}).get("output", {})
                         if "messages" in output:
-                            for msg in output["messages"]:
-                                if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
-                                    content = msg.content
-                                    if isinstance(content, str) and content:
-                                        # 누락된 부분이 있으면 추가
-                                        if content != accumulated_text and len(content) > len(accumulated_text):
-                                            missing_text = content[len(accumulated_text):]
-                                            if missing_text:
-                                                yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
-                                                accumulated_text = content
-                                        elif not accumulated_text:
-                                            # accumulated_text가 비어있으면 전체 전송
-                                            yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                            accumulated_text = content
-                                    break
+                    for msg in output["messages"]:
+                        if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
+                            content = msg.content
+                            if isinstance(content, str) and content:
+                                if not accumulated_text:
+                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                    accumulated_text = content
+                                elif content.startswith(accumulated_text):
+                                    missing_text = content[len(accumulated_text):]
+                                    if missing_text:
+                                        yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
+                                        accumulated_text = content
+                                else:
+                                    # 스트리밍 중 일부 앞부분이 누락된 경우 전체 텍스트를 다시 전송
+                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                    accumulated_text = content
+                            break
             except Exception as stream_error:
                 stream_error_message = str(stream_error)
                 print(f"스트리밍 오류: {stream_error_message}")
@@ -361,19 +363,20 @@ async def chat_stream(request: ChatRequest):
                                 content = msg.content
                                 if isinstance(content, str) and content:
                                     if not accumulated_text:
-                                        # 전체 텍스트를 작은 청크로 나누어 스트리밍 효과 생성
                                         chunk_size = 20
                                         for i in range(0, len(content), chunk_size):
                                             chunk = content[i:i+chunk_size]
                                             yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
                                             accumulated_text += chunk
-                                            await asyncio.sleep(0.02)  # 스트리밍 효과를 위한 지연
-                                    elif content != accumulated_text and len(content) > len(accumulated_text):
-                                        # 누락된 부분 추가
+                                            await asyncio.sleep(0.02)
+                                    elif content.startswith(accumulated_text):
                                         missing_text = content[len(accumulated_text):]
                                         if missing_text:
                                             yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
                                             accumulated_text = content
+                                    else:
+                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                        accumulated_text = content
                                 break
                 except Exception as e:
                     fallback_error_message = str(e)
