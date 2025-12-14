@@ -277,12 +277,14 @@ export default function ConversationList({ onSelectConversation, selectedConvers
       )}
 
       {/* 대화 목록 */}
-      {conversations.map((conversation) => (
+      {conversations.map((conversation) => {
+        const isSelected = selectedConversationId === conversation.id
+        return (
         <div
           key={conversation.id}
           className={`relative w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 group focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
-            selectedConversationId === conversation.id
-              ? 'bg-primary/10 border border-primary/30'
+            isSelected
+              ? 'bg-primary/20 border-2 border-primary/50 shadow-sm'
               : 'hover:bg-secondary/30 border border-transparent'
           }`}
           onMouseEnter={() => setHoveredId(conversation.id)}
@@ -339,7 +341,9 @@ export default function ConversationList({ onSelectConversation, selectedConvers
                       {formatDate(conversation.updated_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-foreground line-clamp-2">
+                  <p className={`text-sm line-clamp-2 ${
+                    isSelected ? 'text-primary font-medium' : 'text-foreground'
+                  }`}>
                     {conversation.metadata?.title || conversation.first_message || `대화 ${conversation.id.slice(0, 8)}...`}
                   </p>
                 </div>
@@ -383,7 +387,8 @@ export default function ConversationList({ onSelectConversation, selectedConvers
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -76,16 +76,26 @@ export default function Home() {
 
   const handleConversationIdChange = (conversationId: string | null) => {
     setSelectedConversationId(conversationId)
-    // 새 대화가 생성되면 URL 업데이트
+    // 새 대화가 생성되면 URL 업데이트 (Vercel/Render 배포 환경 대응)
     if (conversationId) {
-      router.push(`/chat/${conversationId}`, { scroll: false })
+      const newUrl = `/chat/${conversationId}`
+      // 현재 URL과 다를 때만 업데이트
+      if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
+        // 브라우저 히스토리와 Next.js 라우터 모두 업데이트
+        window.history.pushState({}, '', newUrl)
+        router.replace(newUrl, { scroll: false })
+      }
     }
   }
 
   const handleSelectConversation = async (conversationId: string) => {
     setSelectedConversationId(conversationId)
-    // URL 업데이트
-    router.push(`/chat/${conversationId}`, { scroll: false })
+    // URL 업데이트 (Vercel/Render 배포 환경 대응)
+    const newUrl = `/chat/${conversationId}`
+    if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
+      window.history.pushState({}, '', newUrl)
+      router.replace(newUrl, { scroll: false })
+    }
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)
     }
@@ -251,7 +261,13 @@ export default function Home() {
       >
         {/* 로고 영역 */}
         <div className="flex-shrink-0 pt-6 sm:pt-8 md:pt-4 px-4 sm:px-5 md:px-6 pb-3 sm:pb-4 border-b border-border/30 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <button
+            onClick={() => {
+              handleNewConversation()
+            }}
+            className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg p-1 -m-1"
+            aria-label="홈으로 이동"
+          >
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.12),0_3px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] transform-style-preserve-3d transition-all duration-300 hover:shadow-[0_10px_28px_rgba(0,0,0,0.15),0_5px_14px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] hover:-translate-y-1 hover:translate-z-10 hover:rotate-3 flex-shrink-0" aria-hidden="true" style={{ transformStyle: 'preserve-3d' }}>
               <span className="text-foreground font-bold text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">✟</span>
             </div>
@@ -259,7 +275,7 @@ export default function Home() {
               <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">성경QA</h1>
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">하나님의 말씀을 묻고 답하다</p>
             </div>
-          </div>
+          </button>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
