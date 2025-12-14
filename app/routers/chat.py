@@ -152,6 +152,18 @@ async def chat_stream(request: ChatRequest):
     async def generate() -> AsyncGenerator[str, None]:
         """스트리밍 응답 생성"""
         import asyncio
+
+        def format_stream_error(error_text: str | None) -> str:
+            """LLM/툴 오류 메시지를 사용자가 이해할 수 있는 문장으로 정리."""
+            if not error_text:
+                return "AI 응답을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
+
+            lowered = error_text.lower()
+            if "429" in error_text or "quota" in lowered or "rate limit" in lowered or "resourceexhausted" in lowered:
+                return "AI 모델 호출 한도를 초과했습니다. 잠시 뒤 다시 시도해 주세요."
+            if "permission" in lowered or "unauthorized" in lowered:
+                return "AI 모델 인증에 실패했습니다. API 키를 확인해 주세요."
+            return f"AI 응답 생성 중 오류가 발생했습니다: {error_text}"
         try:
             # 대화 ID 생성 또는 조회 (없는 경우)
             # 빈 문자열이나 None인 경우도 새 대화로 처리
@@ -216,78 +228,55 @@ async def chat_stream(request: ChatRequest):
             
             # 백그라운드에서 사용자 메시지 저장 시작
             save_task = asyncio.create_task(save_user_message())
-            
-            # LangChain Agent의 스트리밍 사용 - astream으로 더 안정적인 스트리밍 구현
-            # astream은 각 단계의 메시지를 반환하므로 더 예측 가능합니다
-            
-            last_ai_content = ""
-            async for chunk in agent.astream({"messages": all_messages}):
-                if "messages" in chunk:
-                    for msg in chunk["messages"]:
-                        # AIMessage인 경우 스트리밍
-                        if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
-                            content = msg.content
-                            
-                            # content가 문자열인 경우
-                            if isinstance(content, str) and content:
-                                # 이전 내용 이후의 새로운 부분만 추출
-                                if last_ai_content and content.startswith(last_ai_content):
-                                    new_text = content[len(last_ai_content):]
-                                    if new_text:
-                                        yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                        accumulated_text += new_text
-                                        has_streamed = True
-                                        last_ai_content = content
-                                elif content != last_ai_content:
-                                    # 처음이거나 이전 내용과 다른 경우
-                                    if last_ai_content:
-                                        # 이전 내용이 있으면 차이만 전송
-                                        new_text = content[len(last_ai_content):] if content.startswith(last_ai_content) else content
+
+            stream_error_message = None
+            fallback_error_message = None
+
+            # LangChain Agent 실행 - 스트리밍 시도, 실패 시 폴백
+            # 먼저 astream_events로 스트리밍 시도
+            try:
+                last_ai_content = ""
+                async for event in agent.astream_events(
+                    {"messages": all_messages},
+                    version="v1"
+                ):
+                    event_type = event.get("event")
+                    event_name = event.get("name", "")
+                    
+                    # LLM 스트리밍 이벤트 처리
+                    if event_type == "on_chat_model_stream":
+                        data = event.get("data", {})
+                        chunk = data.get("chunk")
+                        
+                        if chunk:
+                            # chunk에서 content 추출
+                            if hasattr(chunk, 'content'):
+                                content = chunk.content
+                                if isinstance(content, str) and content:
+                                    # 이전 내용 이후의 새로운 부분만 추출
+                                    if last_ai_content and content.startswith(last_ai_content):
+                                        new_text = content[len(last_ai_content):]
                                         if new_text:
                                             yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
                                             accumulated_text += new_text
-                                    else:
-                                        # 처음인 경우 전체 전송
-                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                        accumulated_text = content
-                                    has_streamed = True
-                                    last_ai_content = content
-                            
-                            # content가 리스트인 경우 (Gemini의 구조화된 응답)
-                            elif isinstance(content, list):
-                                for item in content:
-                                    if isinstance(item, dict) and 'text' in item:
-                                        text = item['text']
-                                        if text and text != last_ai_content:
-                                            if last_ai_content and text.startswith(last_ai_content):
-                                                new_text = text[len(last_ai_content):]
-                                                if new_text:
-                                                    yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                                    accumulated_text += new_text
-                                                    has_streamed = True
-                                                    last_ai_content = text
-                                            else:
-                                                yield f"data: {json.dumps({'type': 'token', 'content': text}, ensure_ascii=False)}\n\n"
-                                                accumulated_text = text
-                                                has_streamed = True
-                                                last_ai_content = text
-                                    elif isinstance(item, str) and item and item != last_ai_content:
-                                        if last_ai_content and item.startswith(last_ai_content):
-                                            new_text = item[len(last_ai_content):]
-                                            if new_text:
-                                                yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                                accumulated_text += new_text
-                                                has_streamed = True
-                                                last_ai_content = item
-                                        else:
-                                            yield f"data: {json.dumps({'type': 'token', 'content': item}, ensure_ascii=False)}\n\n"
-                                            accumulated_text = item
                                             has_streamed = True
-                                            last_ai_content = item
-                        
-                        # ToolMessage인 경우 소스 정보 추출
-                        elif hasattr(msg, '__class__') and msg.__class__.__name__ == "ToolMessage":
-                            tool_content = str(msg.content)
+                                            last_ai_content = content
+                                    elif content != last_ai_content:
+                                        if last_ai_content:
+                                            new_text = content[len(last_ai_content):] if content.startswith(last_ai_content) else content
+                                        else:
+                                            new_text = content
+                                        if new_text:
+                                            yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
+                                            accumulated_text += new_text
+                                            has_streamed = True
+                                            last_ai_content = content
+                            
+                    # Tool 실행 완료 시 소스 정보 추출
+                    elif event_type == "on_tool_end":
+                        tool_output = event.get("data", {}).get("output", "")
+                        if tool_output:
+                            tool_content = str(tool_output)
                             pattern = r'\[([^\]]+)\]\s*([^\n]+)'
                             matches = re.findall(pattern, tool_content)
                             for citation, content_preview in matches:
@@ -307,84 +296,97 @@ async def chat_stream(request: ChatRequest):
                                     })
                                     if len(sources) >= 3:
                                         break
+                    
+                    # AIMessage 완성 시 최종 텍스트 추출
+                    elif event_type == "on_chain_end" and event_name == "RunnableAgent":
+                        output = event.get("data", {}).get("output", {})
+                        if "messages" in output:
+                            for msg in output["messages"]:
+                                if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
+                                    content = msg.content
+                                    if isinstance(content, str) and content:
+                                        # 누락된 부분이 있으면 추가
+                                        if content != accumulated_text and len(content) > len(accumulated_text):
+                                            missing_text = content[len(accumulated_text):]
+                                            if missing_text:
+                                                yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
+                                                accumulated_text = content
+                                        elif not accumulated_text:
+                                            # accumulated_text가 비어있으면 전체 전송
+                                            yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                            accumulated_text = content
+                                    break
+            except Exception as stream_error:
+                stream_error_message = str(stream_error)
+                print(f"스트리밍 오류: {stream_error_message}")
+                # 스트리밍 실패 시 폴백: 최종 결과를 가져와서 청크 단위로 전송
+                has_streamed = False
             
-            # 스트리밍이 전혀 발생하지 않은 경우 최종 결과에서 추출
-            if not has_streamed:
-                # 최종 결과를 가져와서 스트리밍 효과 생성
-                result = await asyncio.to_thread(
-                    agent.invoke,
-                    {"messages": all_messages}
-                )
-                
-                if "messages" in result:
-                    for msg in result["messages"]:
-                        if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
-                            content = msg.content
-                            if isinstance(content, str) and content:
-                                # 전체 텍스트를 작은 청크로 나누어 스트리밍 효과 생성
-                                chunk_size = 15
-                                for i in range(0, len(content), chunk_size):
-                                    chunk = content[i:i+chunk_size]
-                                    yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
-                                    accumulated_text += chunk
-                                    # 약간의 지연을 추가하여 스트리밍 효과
-                                    await asyncio.sleep(0.01)
-                                has_streamed = True
-                            
-                            # ToolMessage에서 소스 추출
-                            if "messages" in result:
-                                for tool_msg in result["messages"]:
-                                    if hasattr(tool_msg, '__class__') and tool_msg.__class__.__name__ == "ToolMessage":
-                                        tool_content = str(tool_msg.content)
-                                        pattern = r'\[([^\]]+)\]\s*([^\n]+)'
-                                        matches = re.findall(pattern, tool_content)
-                                        for citation, content_preview in matches:
-                                            parts = citation.split()
-                                            if len(parts) >= 2:
-                                                book = parts[0]
-                                                chapter = parts[1].replace('장', '') if '장' in parts[1] else None
-                                                verse = None
-                                                if len(parts) >= 3:
-                                                    verse = parts[2].replace('절', '') if '절' in parts[2] else None
-                                                
-                                                sources.append({
-                                                    "book": book,
-                                                    "chapter": chapter or "",
-                                                    "verse": verse or "",
-                                                    "content": content_preview[:200] + "..." if len(content_preview) > 200 else content_preview
-                                                })
-                                                if len(sources) >= 3:
-                                                    break
-            
-            # 사용자 메시지 저장 완료 대기
-            await save_task
-            
-            # accumulated_text가 비어있거나 불완전한 경우 최종 결과에서 전체 텍스트 가져오기
-            if not accumulated_text or len(accumulated_text) < 10:
+            # 스트리밍이 전혀 발생하지 않았거나 accumulated_text가 비어있는 경우 폴백
+            if not has_streamed or not accumulated_text:
                 try:
                     result = await asyncio.to_thread(
                         agent.invoke,
                         {"messages": all_messages}
                     )
+                    
                     if "messages" in result:
+                        # ToolMessage에서 소스 추출
+                        for msg in result["messages"]:
+                            if hasattr(msg, '__class__') and msg.__class__.__name__ == "ToolMessage":
+                                tool_content = str(msg.content)
+                                pattern = r'\[([^\]]+)\]\s*([^\n]+)'
+                                matches = re.findall(pattern, tool_content)
+                                for citation, content_preview in matches:
+                                    parts = citation.split()
+                                    if len(parts) >= 2:
+                                        book = parts[0]
+                                        chapter = parts[1].replace('장', '') if '장' in parts[1] else None
+                                        verse = None
+                                        if len(parts) >= 3:
+                                            verse = parts[2].replace('절', '') if '절' in parts[2] else None
+                                        
+                                        sources.append({
+                                            "book": book,
+                                            "chapter": chapter or "",
+                                            "verse": verse or "",
+                                            "content": content_preview[:200] + "..." if len(content_preview) > 200 else content_preview
+                                        })
+                                        if len(sources) >= 3:
+                                            break
+                        
+                        # AIMessage에서 최종 답변 추출
                         for msg in result["messages"]:
                             if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
                                 content = msg.content
                                 if isinstance(content, str) and content:
                                     if not accumulated_text:
-                                        # accumulated_text가 비어있으면 전체 텍스트를 한 번에 전송
-                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                        accumulated_text = content
+                                        # 전체 텍스트를 작은 청크로 나누어 스트리밍 효과 생성
+                                        chunk_size = 20
+                                        for i in range(0, len(content), chunk_size):
+                                            chunk = content[i:i+chunk_size]
+                                            yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
+                                            accumulated_text += chunk
+                                            await asyncio.sleep(0.02)  # 스트리밍 효과를 위한 지연
                                     elif content != accumulated_text and len(content) > len(accumulated_text):
-                                        # 누락된 부분이 있으면 추가
+                                        # 누락된 부분 추가
                                         missing_text = content[len(accumulated_text):]
                                         if missing_text:
                                             yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
                                             accumulated_text = content
                                 break
                 except Exception as e:
-                    print(f"최종 결과 가져오기 오류: {e}")
+                    fallback_error_message = str(e)
+                    print(f"폴백 처리 오류: {fallback_error_message}")
             
+            # 사용자 메시지 저장 완료 대기
+            await save_task
+
+            if not accumulated_text:
+                error_msg = format_stream_error(fallback_error_message or stream_error_message)
+                yield f"data: {json.dumps({'type': 'error', 'content': error_msg}, ensure_ascii=False)}\n\n"
+                return
+
             # 최종 메타데이터 전송
             yield f"data: {json.dumps({'type': 'done', 'sources': sources if sources else None}, ensure_ascii=False)}\n\n"
             
@@ -509,4 +511,3 @@ async def update_conversation(conversation_id: str, title: str = Query(..., desc
 async def health():
     """헬스 체크 엔드포인트"""
     return {"status": "healthy", "message": "서비스가 정상적으로 동작 중입니다."}
-
