@@ -16,23 +16,23 @@ router = APIRouter(prefix="/api", tags=["chat"])
 async def chat(request: ChatRequest):
     """채팅 엔드포인트"""
     import asyncio
-        try:
-            # 대화 ID 생성 또는 조회 (없는 경우)
-            # 빈 문자열이나 None인 경우도 새 대화로 처리
-            if not request.conversation_id or request.conversation_id.strip() == "":
+    try:
+        # 대화 ID 생성 또는 조회 (없는 경우)
+        # 빈 문자열이나 None인 경우도 새 대화로 처리
+        if not request.conversation_id or request.conversation_id.strip() == "":
+            conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
+        else:
+            # 기존 대화 ID 검증 (존재하는지 확인)
+            try:
+                messages = await asyncio.to_thread(
+                    conversation_service.get_conversation_messages,
+                    request.conversation_id,
+                    limit=1
+                )
+                conversation_id = request.conversation_id
+            except Exception:
+                # 대화가 존재하지 않으면 새로 생성
                 conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
-            else:
-                # 기존 대화 ID 검증 (존재하는지 확인)
-                try:
-                    messages = await asyncio.to_thread(
-                        conversation_service.get_conversation_messages,
-                        request.conversation_id,
-                        limit=1
-                    )
-                    conversation_id = request.conversation_id
-                except Exception:
-                    # 대화가 존재하지 않으면 새로 생성
-                    conversation_id = await asyncio.to_thread(conversation_service.create_conversation)
         
         # 이전 대화 메시지 가져오기 (멀티턴 대화 지원) - 먼저 로드
         previous_messages: List = []
