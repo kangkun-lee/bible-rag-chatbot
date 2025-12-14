@@ -210,7 +210,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 break
               } else if (event.type === 'error') {
                 streamCompleted = true
-                console.error('스트리밍 오류:', event.content)
                 
                 // 에러 메시지 처리
                 let errorText = '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.'
@@ -252,7 +251,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             setIsLoading(false)
           }
         } catch (error) {
-          console.error('Error:', error)
           const errorMessage: MessageData = {
             id: (Date.now() + 1).toString(),
             text: `죄송합니다. 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}. API URL을 확인해주세요.`,
@@ -367,7 +365,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 break
               } else if (event.type === 'error') {
                 streamCompleted = true
-                console.error('스트리밍 오류:', event.content)
                 setIsLoading(false)
                 break
               }
@@ -385,7 +382,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             setIsLoading(false)
           }
         } catch (error) {
-          console.error('Error:', error)
           const errorMessage: MessageData = {
             id: (Date.now() + 1).toString(),
             text: `죄송합니다. 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}. API URL을 확인해주세요.`,
@@ -405,36 +401,20 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     // main-content ID를 가진 스크롤 컨테이너 우선 사용
     const byId = document.getElementById('main-content')
     if (byId) {
-      console.log('[Scroll Debug] Found container by ID:', {
-        id: byId.id,
-        scrollHeight: byId.scrollHeight,
-        clientHeight: byId.clientHeight,
-        scrollTop: byId.scrollTop,
-        overflowY: window.getComputedStyle(byId).overflowY,
-        height: window.getComputedStyle(byId).height
-      })
       return byId
     }
 
     // data 속성으로 명시된 컨테이너가 있으면 사용
     const byData = document.querySelector('[data-scroll-container="chat"]') as HTMLElement | null
     if (byData) {
-      console.log('[Scroll Debug] Found container by data attribute:', {
-        scrollHeight: byData.scrollHeight,
-        clientHeight: byData.clientHeight,
-        scrollTop: byData.scrollTop,
-        overflowY: window.getComputedStyle(byData).overflowY
-      })
       return byData
     }
 
-    console.warn('[Scroll Debug] No scroll container found!')
     return null
   }
 
   const scrollToBottom = (force = false) => {
     if (!force && !shouldAutoScrollRef.current) {
-      console.log('[Scroll Debug] scrollToBottom skipped:', { force, shouldAutoScroll: shouldAutoScrollRef.current })
       return
     }
     
@@ -442,31 +422,19 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     if (container) {
       // 모바일에서 더 확실한 스크롤을 위해 여러 방법 시도
       const scrollHeight = container.scrollHeight
-      const beforeScrollTop = container.scrollTop
-      
-      console.log('[Scroll Debug] scrollToBottom called:', {
-        force,
-        scrollHeight,
-        beforeScrollTop,
-        clientHeight: container.clientHeight,
-        canScroll: scrollHeight > container.clientHeight
-      })
       
       // 1. 즉시 스크롤
       container.scrollTop = scrollHeight
-      console.log('[Scroll Debug] Immediate scroll set:', { scrollTop: container.scrollTop })
       
       // 2. requestAnimationFrame으로 다시 시도
       requestAnimationFrame(() => {
         container.scrollTop = scrollHeight
-        console.log('[Scroll Debug] RAF scroll set:', { scrollTop: container.scrollTop })
         // 3. scrollTo로 smooth 스크롤
         setTimeout(() => {
           container.scrollTo({
             top: scrollHeight,
             behavior: 'smooth'
           })
-          console.log('[Scroll Debug] Smooth scrollTo called:', { scrollTop: container.scrollTop })
         }, 10)
       })
       
@@ -475,20 +443,10 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
         const finalScrollTop = container.scrollTop
         if (finalScrollTop < scrollHeight - 50) {
           container.scrollTop = scrollHeight
-          console.log('[Scroll Debug] Final correction applied:', { 
-            before: finalScrollTop, 
-            after: container.scrollTop,
-            scrollHeight 
-          })
-        } else {
-          console.log('[Scroll Debug] Scroll position OK:', { finalScrollTop, scrollHeight })
         }
       }, 100)
     } else if (messagesEndRef.current) {
-      console.log('[Scroll Debug] Using messagesEndRef.scrollIntoView')
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' })
-    } else {
-      console.warn('[Scroll Debug] No scroll method available!')
     }
   }
 
@@ -496,39 +454,19 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
   useEffect(() => {
     const container = getScrollContainer()
     if (!container) {
-      console.warn('[Scroll Debug] No container found for scroll listener')
       return
     }
-
-    console.log('[Scroll Debug] Setting up scroll listener on container:', {
-      id: container.id,
-      hasDataAttr: container.hasAttribute('data-scroll-container')
-    })
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100 // 100px 여유
-      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
       
       // 사용자가 맨 아래 근처에 있으면 자동 스크롤 활성화
-      const previousValue = shouldAutoScrollRef.current
       shouldAutoScrollRef.current = isNearBottom
-      
-      if (previousValue !== isNearBottom) {
-        console.log('[Scroll Debug] Auto-scroll state changed:', {
-          from: previousValue,
-          to: isNearBottom,
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          distanceFromBottom
-        })
-      }
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })
     return () => {
-      console.log('[Scroll Debug] Removing scroll listener')
       container.removeEventListener('scroll', handleScroll)
     }
   }, [])
@@ -554,43 +492,25 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
 
   useEffect(() => {
     // 새 메시지가 추가되거나 메시지 내용이 업데이트될 때 자동 스크롤 (사용자가 맨 아래에 있을 때만)
-    console.log('[Scroll Debug] Messages changed:', {
-      messageCount: messages.length,
-      shouldAutoScroll: shouldAutoScrollRef.current,
-      lastMessage: messages[messages.length - 1]?.text?.substring(0, 50)
-    })
-    
     if (shouldAutoScrollRef.current) {
       // 모바일에서 더 확실한 스크롤을 위해 여러 단계로 시도
       const container = getScrollContainer()
       if (container) {
-        const beforeHeight = container.scrollHeight
         // 즉시 스크롤
         container.scrollTop = container.scrollHeight
-        console.log('[Scroll Debug] Messages effect - immediate scroll:', {
-          scrollHeight: beforeHeight,
-          scrollTop: container.scrollTop
-        })
         // 다음 프레임에서 다시 스크롤
         requestAnimationFrame(() => {
           container.scrollTop = container.scrollHeight
-          console.log('[Scroll Debug] Messages effect - RAF scroll:', {
-            scrollHeight: container.scrollHeight,
-            scrollTop: container.scrollTop
-          })
           // 한 번 더 smooth 스크롤
           setTimeout(() => {
             scrollToBottom(true)
           }, 50)
         })
       } else {
-        console.warn('[Scroll Debug] Messages effect - no container, using fallback')
         requestAnimationFrame(() => {
           setTimeout(() => scrollToBottom(), 0)
         })
       }
-    } else {
-      console.log('[Scroll Debug] Messages effect - auto-scroll disabled, user scrolled up')
     }
   }, [messages])
 
@@ -713,7 +633,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
         setIsLoading(false)
       }
     } catch (error) {
-      console.error('Error:', error)
       const errorMessage: MessageData = {
         id: (Date.now() + 1).toString(),
         text: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.',

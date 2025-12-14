@@ -1,22 +1,5 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-// API URL 확인 및 경고
-if (typeof window !== 'undefined') {
-  console.log('API Base URL:', API_BASE_URL)
-  
-  // 프로덕션 환경에서 localhost를 사용하는 경우 경고
-  if (API_BASE_URL.includes('localhost') && window.location.hostname !== 'localhost') {
-    console.error('⚠️ NEXT_PUBLIC_API_URL이 설정되지 않았습니다! Vercel 환경변수를 확인하세요.')
-    console.error('현재 사용 중인 URL:', API_BASE_URL)
-  }
-  
-  // Vercel 도메인으로 요청이 가는 경우 경고
-  if (API_BASE_URL.includes(window.location.hostname) && !API_BASE_URL.includes('localhost')) {
-    console.error('⚠️ API 요청이 프론트엔드 도메인으로 가고 있습니다!')
-    console.error('NEXT_PUBLIC_API_URL을 Render 백엔드 URL로 설정하세요.')
-  }
-}
-
 export interface ChatResponse {
   answer: string
   conversation_id?: string
@@ -45,12 +28,6 @@ export async function sendMessage(
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('API Error:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: `${API_BASE_URL}/api/chat`,
-      error: errorText
-    })
     throw new Error(`Failed to send message: ${response.status} ${response.statusText}`)
   }
 
@@ -86,12 +63,6 @@ export async function* sendMessageStream(
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('Stream API Error:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: `${API_BASE_URL}/api/chat/stream`,
-      error: errorText
-    })
     
     // 503 에러 (서비스 과부하) 처리
     if (response.status === 503) {
@@ -127,7 +98,7 @@ export async function* sendMessageStream(
                 const data = JSON.parse(line.slice(6))
                 yield data
               } catch (e) {
-                console.error('Failed to parse SSE data:', e)
+                // SSE 데이터 파싱 실패 시 무시
               }
             }
           }
@@ -145,7 +116,7 @@ export async function* sendMessageStream(
             const data = JSON.parse(line.slice(6))
             yield data
           } catch (e) {
-            console.error('Failed to parse SSE data:', e)
+            // SSE 데이터 파싱 실패 시 무시
           }
         }
       }

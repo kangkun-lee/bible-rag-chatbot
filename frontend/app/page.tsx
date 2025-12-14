@@ -26,7 +26,6 @@ export default function Home() {
       const mediaQuery = window.matchMedia('(min-width: 768px)')
 
       const applyMatch = (matches: boolean) => {
-        console.log('[Sidebar Debug] Media query changed:', { matches, viewportWidth: window.innerWidth })
         setIsDesktop(matches)
         setIsSidebarOpen(matches)
       }
@@ -81,9 +80,8 @@ export default function Home() {
       const newUrl = `/chat/${conversationId}`
       // 현재 URL과 다를 때만 업데이트
       if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-        // 브라우저 히스토리와 Next.js 라우터 모두 업데이트
-        window.history.pushState({}, '', newUrl)
-        router.replace(newUrl, { scroll: false })
+        // Next.js router.push를 사용하여 URL 업데이트
+        router.push(newUrl)
       }
     }
   }
@@ -93,8 +91,7 @@ export default function Home() {
     // URL 업데이트 (Vercel/Render 배포 환경 대응)
     const newUrl = `/chat/${conversationId}`
     if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-      window.history.pushState({}, '', newUrl)
-      router.replace(newUrl, { scroll: false })
+      router.push(newUrl)
     }
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)
@@ -195,12 +192,7 @@ export default function Home() {
       <button
         type="button"
         onClick={() => {
-          console.log('[Sidebar Debug] Menu button clicked, current state:', { isSidebarOpen, isDesktop })
-          setIsSidebarOpen((prev) => {
-            const newState = !prev
-            console.log('[Sidebar Debug] Sidebar state will change:', { from: prev, to: newState })
-            return newState
-          })
+          setIsSidebarOpen((prev) => !prev)
         }}
         className={`md:hidden fixed top-3 left-3 z-20 inline-flex items-center justify-center rounded-full bg-background/90 border border-border/40 shadow-sm w-12 h-12 touch-manipulation focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-opacity duration-200 ${
           isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
