@@ -213,8 +213,9 @@ async def chat_stream(request: ChatRequest):
             save_task = asyncio.create_task(save_user_message())
             
             # LangChain Agent의 스트리밍 사용 - astream_events로 토큰과 소스를 한 번에 처리
-            # 참고: https://docs.langchain.com/oss/python/langchain/streaming
+            # 모든 스트리밍 이벤트를 처리하여 안정성 향상
             
+            last_token = ""
             async for event in agent.astream_events(
                 {"messages": all_messages},
                 version="v1"
@@ -222,49 +223,88 @@ async def chat_stream(request: ChatRequest):
                 event_type = event.get("event")
                 event_name = event.get("name", "")
                 
-                # Gemini/ChatModel 스트리밍 이벤트 처리
-                if event_type in ["on_llm_stream", "on_chat_model_stream", "on_llm_new_token"]:
+                # LLM 스트리밍 이벤트 처리 (여러 이벤트 타입 지원)
+                if event_type in ["on_chat_model_stream", "on_llm_stream", "on_llm_new_token"]:
                     data = event.get("data", {})
+                    
+                    # on_llm_new_token의 경우 chunk가 문자열일 수 있음
+                    if event_type == "on_llm_new_token":
+                        token = data.get("token") or data.get("chunk")
+                        if token:
+                            if isinstance(token, str) and token:
+                                yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+                                accumulated_text += token
+                                last_token = accumulated_text
+                            continue
+                    
+                    # on_chat_model_stream과 on_llm_stream의 경우
                     chunk = data.get("chunk") or data.get("data", {}).get("chunk")
                     
                     if chunk:
-                        # content_blocks에서 텍스트 토큰 추출
-                        if hasattr(chunk, 'content_blocks') and chunk.content_blocks:
-                            for block in chunk.content_blocks:
-                                if isinstance(block, dict) and block.get('type') == 'text':
-                                    text_content = block.get('text', '')
-                                    if text_content:
-                                        yield f"data: {json.dumps({'type': 'token', 'content': text_content}, ensure_ascii=False)}\n\n"
-                                        accumulated_text += text_content
-                        
-                        # content 속성 확인
+                        # chunk가 문자열인 경우 (직접 토큰)
+                        if isinstance(chunk, str) and chunk:
+                            yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
+                            accumulated_text += chunk
+                            last_token = accumulated_text
+                        # chunk에서 content 추출
                         elif hasattr(chunk, 'content'):
                             content = chunk.content
+                            # content가 문자열인 경우
                             if isinstance(content, str) and content:
-                                if content != accumulated_text:
-                                    if len(content) > len(accumulated_text) and content.startswith(accumulated_text):
-                                        new_text = content[len(accumulated_text):]
-                                        if new_text:
-                                            accumulated_text = content
-                                            yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                    else:
-                                        accumulated_text = content
-                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                # 이전 토큰 이후의 새로운 부분만 추출
+                                if last_token and content.startswith(last_token):
+                                    new_text = content[len(last_token):]
+                                    if new_text:
+                                        yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
+                                        accumulated_text += new_text
+                                        last_token = content
+                                else:
+                                    # 처음이거나 이전 토큰과 다른 경우
+                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                    accumulated_text = content
+                                    last_token = content
+                            # content가 리스트인 경우
                             elif isinstance(content, list):
                                 for item in content:
                                     if isinstance(item, dict) and 'text' in item:
                                         text = item['text']
-                                        if text and text != accumulated_text:
-                                            new_text = text[len(accumulated_text):] if text.startswith(accumulated_text) else text
-                                            if new_text:
+                                        if text:
+                                            if last_token and text.startswith(last_token):
+                                                new_text = text[len(last_token):]
+                                                if new_text:
+                                                    yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
+                                                    accumulated_text += new_text
+                                                    last_token = text
+                                            else:
+                                                yield f"data: {json.dumps({'type': 'token', 'content': text}, ensure_ascii=False)}\n\n"
                                                 accumulated_text = text
-                                                yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                    elif isinstance(item, str):
-                                        if item and item != accumulated_text:
-                                            new_text = item[len(accumulated_text):] if item.startswith(accumulated_text) else item
+                                                last_token = text
+                                    elif isinstance(item, str) and item:
+                                        if last_token and item.startswith(last_token):
+                                            new_text = item[len(last_token):]
                                             if new_text:
-                                                accumulated_text = item
                                                 yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
+                                                accumulated_text += new_text
+                                                last_token = item
+                                        else:
+                                            yield f"data: {json.dumps({'type': 'token', 'content': item}, ensure_ascii=False)}\n\n"
+                                            accumulated_text = item
+                                            last_token = item
+                        # chunk가 딕셔너리인 경우
+                        elif isinstance(chunk, dict):
+                            if 'content' in chunk:
+                                content = chunk['content']
+                                if isinstance(content, str) and content:
+                                    if last_token and content.startswith(last_token):
+                                        new_text = content[len(last_token):]
+                                        if new_text:
+                                            yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
+                                            accumulated_text += new_text
+                                            last_token = content
+                                    else:
+                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                        accumulated_text = content
+                                        last_token = content
                 
                 # Tool 실행 완료 시 소스 정보 추출
                 elif event_type == "on_tool_end":
