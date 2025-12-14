@@ -59,6 +59,24 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
 
   // 대화 ID 변경 시 메시지 초기화 및 로드
   useEffect(() => {
+    // conversationIdRef를 항상 prop과 동기화 (중요: 새 대화 시작 시 null로 초기화)
+    const previousConversationId = conversationIdRef.current
+    conversationIdRef.current = conversationId || null
+
+    // 새 대화 시작 (conversationId가 null로 변경된 경우 또는 처음부터 null인 경우)
+    if (!conversationId) {
+      // 새 대화 시작 시 무조건 메시지 비우기 (이전 대화에서 전환된 경우 또는 처음부터 새 대화인 경우)
+      if (previousConversationId !== null || messages.length > 0) {
+        setMessages([])
+        setInput('')
+        processedMessagesRef.current.clear()
+      }
+      skipInitialLoadRef.current = false
+      // 새 대화인 경우 initialMessages를 무시하고 여기서 종료
+      return
+    }
+
+    // 스트리밍 중이거나 skip 플래그가 설정된 경우 초기화하지 않음
     if (skipInitialLoadRef.current) {
       skipInitialLoadRef.current = false
       return
@@ -70,7 +88,6 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     }
 
     if (conversationId) {
-      conversationIdRef.current = conversationId
       if (initialMessages && initialMessages.length > 0) {
         // Supabase에서 가져온 메시지를 MessageData 형식으로 변환
         const formattedMessages: MessageData[] = initialMessages.map((msg) => ({
@@ -81,23 +98,17 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           sources: msg.sources || undefined,
         }))
         setMessages(formattedMessages)
-      } else {
-        // initialMessages가 없으면 메시지를 비우지 않음 (스트리밍 중일 수 있음)
-        // 단, conversationId가 변경된 경우에만 초기화
-        if (conversationIdRef.current !== conversationId) {
-          setMessages([])
-        }
+      } else if (previousConversationId !== conversationId) {
+        // conversationId가 변경되었고 initialMessages가 없는 경우 메시지 비우기
+        setMessages([])
       }
     } else {
-      // 새 대화 시작 (로딩 중이 아닐 때만)
-      if (!isLoading) {
-        setMessages([])
-        conversationIdRef.current = null
-      }
+      // conversationId가 null인 경우 (새 대화) - 항상 메시지 비우기
+      setMessages([])
     }
     setInput('')
     processedMessagesRef.current.clear()
-  }, [conversationId, initialMessages])
+  }, [conversationId, initialMessages, isLoading])
 
   useEffect(() => {
     if (initialMessage && !processedMessagesRef.current.has(initialMessage)) {
@@ -132,20 +143,21 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           setMessages((prev) => [...prev, loadingMessage])
           
           let accumulatedText = ''
-          let conversationId = conversationIdRef.current
+          // conversationId prop을 우선 사용하고, 없으면 ref 사용 (새 대화 시작 시 null 보장)
+          let currentConversationId = conversationId || conversationIdRef.current || null
           let streamCompleted = false
           let firstTokenReceived = false
           
           try {
-            for await (const event of sendMessageStream(initialMessage, conversationId)) {
+            for await (const event of sendMessageStream(initialMessage, currentConversationId)) {
               if (event.type === 'start') {
                 if (event.conversation_id) {
-                  conversationId = event.conversation_id
-                  conversationIdRef.current = conversationId
+                  currentConversationId = event.conversation_id
+                  conversationIdRef.current = currentConversationId
                 skipInitialLoadRef.current = true
                   // 상위 컴포넌트에 conversation_id 전달
                   if (onConversationIdChange) {
-                    onConversationIdChange(conversationId)
+                    onConversationIdChange(currentConversationId)
                   }
                 }
               } else if (event.type === 'token' && event.content) {
@@ -289,20 +301,21 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           setMessages((prev) => [...prev, loadingMessage])
           
           let accumulatedText = ''
-          let conversationId = conversationIdRef.current
+          // conversationId prop을 우선 사용하고, 없으면 ref 사용 (새 대화 시작 시 null 보장)
+          let currentConversationId = conversationId || conversationIdRef.current || null
           let streamCompleted = false
           let firstTokenReceived = false
           
           try {
-            for await (const event of sendMessageStream(externalMessage, conversationId)) {
+            for await (const event of sendMessageStream(externalMessage, currentConversationId)) {
               if (event.type === 'start') {
                 if (event.conversation_id) {
-                  conversationId = event.conversation_id
-                  conversationIdRef.current = conversationId
+                  currentConversationId = event.conversation_id
+                  conversationIdRef.current = currentConversationId
               skipInitialLoadRef.current = true
                   // 상위 컴포넌트에 conversation_id 전달
                   if (onConversationIdChange) {
-                    onConversationIdChange(conversationId)
+                    onConversationIdChange(currentConversationId)
                   }
                 }
               } else if (event.type === 'token' && event.content) {
@@ -616,22 +629,22 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
       setMessages((prev) => [...prev, loadingMessage])
 
       let accumulatedText = ''
-      // 새 대화인 경우 null로 설정하여 백엔드에서 새 ID 생성 보장
-      let conversationId = conversationIdRef.current || null
+      // conversationId prop을 우선 사용하고, 없으면 ref 사용 (새 대화 시작 시 null 보장)
+      let currentConversationId = conversationId || conversationIdRef.current || null
       let streamCompleted = false
       let firstTokenReceived = false
 
       try {
-        for await (const event of sendMessageStream(textToSend, conversationId)) {
+        for await (const event of sendMessageStream(textToSend, currentConversationId)) {
           if (event.type === 'start') {
             if (event.conversation_id) {
-              conversationId = event.conversation_id
-              conversationIdRef.current = conversationId
+              currentConversationId = event.conversation_id
+              conversationIdRef.current = currentConversationId
               skipInitialLoadRef.current = true
               // 상위 컴포넌트에 conversation_id 전달 (URL 업데이트 보장)
               if (onConversationIdChange) {
                 // 즉시 URL 업데이트를 위해 콜백 호출
-                onConversationIdChange(conversationId)
+                onConversationIdChange(currentConversationId)
               }
             }
           } else if (event.type === 'token' && event.content) {

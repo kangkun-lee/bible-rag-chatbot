@@ -26,10 +26,13 @@ export default function ChatPage() {
   // URL의 conversation ID와 상태 동기화
   useEffect(() => {
     if (conversationIdFromUrl && conversationIdFromUrl !== selectedConversationId) {
+      // URL에 ID가 있으면 상태 업데이트
       setSelectedConversationId(conversationIdFromUrl)
-    } else if (!conversationIdFromUrl && selectedConversationId) {
-      // URL에 ID가 없는데 상태에 ID가 있으면 URL 업데이트
-      router.replace(`/chat/${selectedConversationId}`)
+    } else if (!conversationIdFromUrl) {
+      // URL에 ID가 없으면 (루트 페이지) 상태도 null로 초기화 (새 대화 시작)
+      if (selectedConversationId !== null) {
+        setSelectedConversationId(null)
+      }
     }
   }, [conversationIdFromUrl, selectedConversationId, router])
 
