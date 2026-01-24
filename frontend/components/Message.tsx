@@ -42,7 +42,6 @@ export default function Message({ message, index }: MessageProps) {
   const formattedTime = message.createdAt ? formatTimestamp(message.createdAt) : ''
 
   useEffect(() => {
-    // 클라이언트에서만 마운트 상태 설정 (hydration 경고 방지)
     setIsMounted(true)
   }, [])
 
@@ -70,83 +69,73 @@ export default function Message({ message, index }: MessageProps) {
 
   return (
     <div
-      className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} ${isMounted ? 'opacity-100' : 'opacity-0'} transition-opacity duration-150`}
+      className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} ${isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} transition-all duration-500 ease-out`}
     >
       <div
-        className={`relative max-w-[90%] sm:max-w-[80%] md:max-w-[60%] rounded-xl p-3 sm:p-4 md:p-5 transition-all duration-150 ${message.isUser
-            ? 'bg-primary shadow-md'
-            : 'bg-white text-foreground shadow-sm border border-border/50'
+        className={`relative max-w-[90%] sm:max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 transition-all duration-200 shadow-sm
+          ${message.isUser
+            ? 'bg-primary text-primary-foreground rounded-tr-sm shadow-md'
+            : 'bg-card text-card-foreground border border-border/40 rounded-tl-sm backdrop-blur-sm'
           }`}
-        style={message.isUser ? { color: '#FFFFFF' } : undefined}
       >
         {message.isLoading && !message.isUser && !message.text ? (
-          <div className="flex items-center space-x-2 py-1">
-            <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          <div className="flex items-center space-x-2 py-2 px-1">
+            <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         ) : (
-          <div
-            className="prose prose-sm md:prose-base max-w-none leading-relaxed mb-2 break-words"
-            style={message.isUser ? { color: '#FFFFFF' } : undefined}
-          >
+          <div className={`prose prose-sm md:prose-base max-w-none leading-relaxed break-words dark:prose-invert ${message.isUser ? 'prose-headings:text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground' : 'prose-headings:text-foreground prose-p:text-foreground'}`}>
             {message.isUser ? (
-              <p className="whitespace-pre-wrap break-words" style={{ color: '#FFFFFF' }}>
+              <p className="whitespace-pre-wrap break-words m-0 text-base">
                 {message.text}
               </p>
             ) : (
-              <div className="relative">
+              <div className="relative font-serif">
                 <ReactMarkdown
                   components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0 break-words">{children}</p>,
-                    h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-2 first:mt-0">{children}</h3>,
-                    ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                    li: ({ children }) => <li className="ml-2">{children}</li>,
+                    p: ({ children }) => <p className="mb-3 last:mb-0 break-words leading-relaxed">{children}</p>,
+                    h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-6 first:mt-0 tracking-tight">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5 first:mt-0 tracking-tight">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-4 first:mt-0">{children}</h3>,
+                    ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ol>,
+                    li: ({ children }) => <li className="ml-1">{children}</li>,
                     blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-border/50 pl-4 italic my-2">
+                      <blockquote className="border-l-4 border-primary/30 pl-4 italic my-4 text-muted-foreground bg-muted/20 py-2 rounded-r-lg">
                         {children}
                       </blockquote>
                     ),
                     code: ({ children, className }) => {
                       const isInline = !className
                       return isInline ? (
-                        <code className="bg-secondary/50 px-1.5 py-0.5 rounded text-sm font-mono">
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border/50">
                           {children}
                         </code>
                       ) : (
-                        <code className="block bg-secondary/50 p-3 rounded text-sm font-mono overflow-x-auto my-2">
+                        <code className="block bg-muted/50 p-4 rounded-xl text-sm font-mono overflow-x-auto my-3 border border-border/50">
                           {children}
                         </code>
                       )
                     },
-                    pre: ({ children }) => (
-                      <pre className="bg-secondary/50 p-3 rounded text-sm font-mono overflow-x-auto my-2">
-                        {children}
-                      </pre>
-                    ),
-                    strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
+                    strong: ({ children }) => <strong className="font-semibold text-foreground/90">{children}</strong>,
                     a: ({ href, children }) => (
                       <a
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary underline hover:text-primary/80 break-all"
+                        className="text-primary underline decoration-primary/30 hover:decoration-primary transition-all break-all font-medium"
                       >
                         {children}
                       </a>
                     ),
-                    hr: () => <hr className="my-4 border-border/50" />,
+                    hr: () => <hr className="my-6 border-border/40" />,
                   }}
                 >
                   {message.text}
                 </ReactMarkdown>
-                {/* 스트리밍 중일 때 깜빡이는 커서 표시 */}
                 {message.isLoading && !message.isUser && (
-                  <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-foreground/60 animate-pulse rounded-sm"></span>
+                  <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-primary/50 animate-pulse rounded-full"></span>
                 )}
               </div>
             )}
@@ -155,26 +144,29 @@ export default function Message({ message, index }: MessageProps) {
 
         {!message.isLoading && message.text && (
           <div
-            className={`mt-3 flex items-center gap-2 text-[11px] ${message.isUser ? 'justify-end text-white/80' : 'justify-start text-muted-foreground'}`}
+            className={`mt-2 flex items-center gap-3 text-[10px] md:text-[11px] font-medium opacity-80 ${message.isUser ? 'justify-end text-primary-foreground/70' : 'justify-start text-muted-foreground'}`}
           >
             {formattedTime && (
-              <time dateTime={message.createdAt} className="tracking-tight">
+              <time dateTime={message.createdAt} className="tracking-wide uppercase">
                 {formattedTime}
               </time>
             )}
             <button
               onClick={handleCopy}
-              className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${message.isUser
-                  ? 'bg-white/20 text-white hover:bg-white/30 focus:ring-white/60'
-                  : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+              className={`flex items-center gap-1.5 rounded-full px-2 py-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${message.isUser
+                  ? 'hover:bg-white/10 active:bg-white/20'
+                  : 'hover:bg-secondary active:bg-secondary/80'
                 }`}
               aria-label={copied ? '복사 완료' : '메시지 복사'}
             >
+              <span className="tracking-tight">
+                {copied ? '복사됨' : '복사'}
+              </span>
               <svg
-                className={`w-3.5 h-3.5 ${copied ? (message.isUser ? 'text-white' : 'text-primary') : ''}`}
+                className={`w-3 h-3 ${copied ? (message.isUser ? 'text-white' : 'text-primary') : ''}`}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.8"
+                strokeWidth="2"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
               >
@@ -187,56 +179,52 @@ export default function Message({ message, index }: MessageProps) {
                   </>
                 )}
               </svg>
-              <span className="tracking-tight">
-                {copied ? '복사됨' : '복사'}
-              </span>
             </button>
           </div>
         )}
 
-        {/* 출처 표시 강화 */}
+        {/* 출처 표시 강화 - 카드 스타일 */}
         {message.sources && message.sources.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border/30">
+          <div className="mt-5 pt-4 border-t border-border/20">
             <button
               onClick={() => setShowSources(!showSources)}
-              className="flex items-center gap-2 text-xs md:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md px-1"
+              className="group flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg px-2 py-1 -ml-2"
               aria-expanded={showSources}
               aria-label={showSources ? '출처 숨기기' : '출처 보기'}
             >
-              <svg
-                className={`w-4 h-4 transition-transform duration-200 ${showSources ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-secondary group-hover:bg-primary/10 transition-colors">
+                <svg
+                  className={`w-3 h-3 transition-transform duration-300 ${showSources ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
               <span>참고 구절 {message.sources.length}개</span>
-              <span className="text-foreground ml-1">•</span>
-              <span className="text-xs text-muted-foreground">개역한글(1961), 대한성서공회</span>
+              <span className="text-border mx-1">•</span>
+              <span className="text-[10px] text-muted-foreground/80 font-normal">대한성서공회 개역한글</span>
             </button>
 
             {showSources && (
-              <div className="space-y-3">
+              <div className="space-y-3 pl-1 animate-in slide-in-from-top-2 fade-in duration-200">
                 {message.sources.map((source, idx) => (
                   <div
                     key={idx}
-                    className="px-4 py-3 rounded-xl text-sm transition-all duration-150 cursor-pointer hover:bg-secondary bg-white border border-border/50 shadow-sm"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${source.book} ${source.chapter}:${source.verse} 구절 보기`}
+                    className="relative group rounded-xl overflow-hidden border border-border/40 bg-background/50 hover:bg-background hover:border-primary/30 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <span className="font-bold text-foreground text-base">
-                        {source.book} {source.chapter}:{source.verse}
-                      </span>
-                      <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border/50">
-                        성경
-                      </span>
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/20 group-hover:bg-primary transition-colors" />
+                    <div className="px-4 py-3 pl-5">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="font-serif font-bold text-foreground text-sm tracking-tight">
+                          {source.book} {source.chapter}:{source.verse}
+                        </span>
+                      </div>
+                      <p className="font-serif text-muted-foreground text-sm leading-relaxed line-clamp-3 group-hover:line-clamp-none group-hover:text-foreground transition-all">
+                        {source.content}
+                      </p>
                     </div>
-                    <p className="text-foreground text-sm leading-relaxed mt-2">
-                      {source.content}
-                    </p>
                   </div>
                 ))}
               </div>

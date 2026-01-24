@@ -20,14 +20,13 @@ interface ConversationListProps {
 
 export default function ConversationList({ userId, onSelectConversation, selectedConversationId, onConversationDeleted, onLoadingComplete }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [allConversations, setAllConversations] = useState<Conversation[]>([]) // 전체 대화 목록 (검색용)
+  const [allConversations, setAllConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // 검색어로 대화 필터링
   const filterConversations = (conversationsToFilter: Conversation[], query: string) => {
     if (!query.trim()) {
       setConversations(conversationsToFilter)
@@ -48,7 +47,6 @@ export default function ConversationList({ userId, onSelectConversation, selecte
       setIsLoading(true)
       const userQuery = userId ? `?user_id=${userId}` : ''
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations${userQuery}`, {
-        // 캐싱 헤더 추가 (5분간 캐시)
         cache: 'default',
         headers: {
           'Cache-Control': 'max-age=300',
@@ -58,14 +56,12 @@ export default function ConversationList({ userId, onSelectConversation, selecte
         const data = await response.json()
         const fetchedConversations = data.conversations || []
         setAllConversations(fetchedConversations)
-        // 검색어가 있으면 필터링, 없으면 전체 표시
         filterConversations(fetchedConversations, searchQuery)
       }
     } catch (error) {
       console.error('대화 목록 조회 오류:', error)
     } finally {
       setIsLoading(false)
-      // 초기 로딩 완료 알림
       if (onLoadingComplete) {
         onLoadingComplete()
       }
@@ -85,7 +81,6 @@ export default function ConversationList({ userId, onSelectConversation, selecte
       })
       
       if (response.ok) {
-        // 전체 목록과 필터링된 목록 모두 업데이트
         setAllConversations(prev => prev.filter(conv => conv.id !== conversationId))
         setConversations(prev => prev.filter(conv => conv.id !== conversationId))
         if (onConversationDeleted) {
@@ -127,7 +122,6 @@ export default function ConversationList({ userId, onSelectConversation, selecte
       })
       
       if (response.ok) {
-        // 전체 목록과 필터링된 목록 모두 업데이트
         const updateConversation = (conv: Conversation) => 
           conv.id === conversationId 
             ? { ...conv, metadata: { ...conv.metadata, title: editTitle.trim() } }
@@ -146,20 +140,17 @@ export default function ConversationList({ userId, onSelectConversation, selecte
     }
   }
 
-  // 검색어 변경 시 필터링 (debounce 적용)
   useEffect(() => {
     const timer = setTimeout(() => {
       filterConversations(allConversations, searchQuery)
-    }, 300) // 300ms debounce
+    }, 300)
 
     return () => clearTimeout(timer)
   }, [searchQuery, allConversations])
 
   useEffect(() => {
-    // 초기 로드 시 대화 목록 조회
     fetchConversations()
     
-    // 페이지가 다시 포커스를 받았을 때만 갱신 (다른 탭에서 대화를 생성했을 수 있음)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchConversations()
@@ -197,16 +188,15 @@ export default function ConversationList({ userId, onSelectConversation, selecte
 
   if (isLoading) {
     return (
-      <div className="space-y-1">
+      <div className="space-y-2 p-2">
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="w-full px-3 py-2.5 rounded-xl bg-secondary/20 animate-pulse"
-            style={{ minHeight: '60px' }}
+            className="w-full px-3 py-3 rounded-xl bg-secondary/30 animate-pulse border border-border/10"
+            style={{ minHeight: '68px' }}
           >
-            <div className="h-3 bg-secondary/40 rounded w-1/4 mb-2"></div>
-            <div className="h-4 bg-secondary/40 rounded w-full"></div>
-            <div className="h-4 bg-secondary/40 rounded w-3/4 mt-1"></div>
+            <div className="h-3 bg-secondary/50 rounded w-1/3 mb-2.5"></div>
+            <div className="h-4 bg-secondary/50 rounded w-3/4"></div>
           </div>
         ))}
       </div>
@@ -215,26 +205,33 @@ export default function ConversationList({ userId, onSelectConversation, selecte
 
   if (!isLoading && allConversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full rounded-2xl border border-dashed border-border/70 bg-secondary/20 text-muted-foreground text-sm px-4 py-6">
-        아직 저장된 대화가 없습니다.
+      <div className="flex flex-col items-center justify-center h-40 mt-10 mx-4 rounded-2xl border border-dashed border-border/30 bg-secondary/10 text-muted-foreground text-sm px-4 py-6 text-center">
+        <div className="w-10 h-10 rounded-full bg-secondary/30 flex items-center justify-center mb-3">
+          <svg className="w-5 h-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <p>아직 대화 내역이 없습니다.</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">새로운 질문을 시작해보세요</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
+    <div className="flex flex-col h-full">
       {/* 검색 입력 필드 */}
-      <div className="mb-3 px-2">
-        <div className="relative">
+      <div className="mb-4 px-3 pt-1">
+        <div className="relative group">
+          <div className="absolute inset-0 bg-secondary/20 rounded-xl blur-sm group-focus-within:bg-primary/5 transition-colors"></div>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="대화 검색..."
-            className="w-full px-3 py-2 pl-9 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 placeholder:text-muted-foreground"
+            className="relative w-full px-4 py-2.5 pl-10 text-sm bg-background/50 backdrop-blur-sm border border-border/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 placeholder:text-muted-foreground/70 transition-all shadow-sm"
           />
           <svg
-            className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground"
+            className="absolute left-3.5 top-3 w-4 h-4 text-muted-foreground/70"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -244,11 +241,11 @@ export default function ConversationList({ userId, onSelectConversation, selecte
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-2 p-1 rounded hover:bg-secondary/50 transition-colors"
+              className="absolute right-2.5 top-2.5 p-0.5 rounded-full hover:bg-secondary/80 text-muted-foreground transition-colors"
               aria-label="검색어 지우기"
             >
               <svg
-                className="w-4 h-4 text-muted-foreground"
+                className="w-3.5 h-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -258,142 +255,110 @@ export default function ConversationList({ userId, onSelectConversation, selecte
             </button>
           )}
         </div>
-        {searchQuery && (
-          <p className="mt-1.5 text-xs text-muted-foreground px-1">
-            {conversations.length}개의 대화를 찾았습니다
-          </p>
-        )}
       </div>
 
-      {/* 검색 결과가 없을 때 */}
+      {/* 검색 결과 없음 */}
       {!isLoading && searchQuery && conversations.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-8 rounded-2xl border border-dashed border-border/70 bg-secondary/20 text-muted-foreground text-sm px-4">
-          <svg
-            className="w-8 h-8 mb-2 text-muted-foreground/50"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-sm px-4 text-center">
           <p>검색 결과가 없습니다</p>
         </div>
       )}
 
       {/* 대화 목록 */}
-      {conversations.map((conversation) => {
-        const isSelected = selectedConversationId === conversation.id
-        return (
-        <div
-          key={conversation.id}
-          className={`relative w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 group focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
-            isSelected
-              ? 'bg-primary/20 border-2 border-primary/50 shadow-sm'
-              : 'hover:bg-secondary/30 border border-transparent'
-          }`}
-          onMouseEnter={() => setHoveredId(conversation.id)}
-          onMouseLeave={() => setHoveredId(null)}
-        >
-          {editingId === conversation.id ? (
-            <form onSubmit={(e) => handleEditSave(conversation.id, e)} className="space-y-2">
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+      <div className="flex-1 overflow-y-auto px-2 space-y-1 pb-4">
+        {conversations.map((conversation) => {
+          const isSelected = selectedConversationId === conversation.id
+          return (
+          <div
+            key={conversation.id}
+            className={`relative w-full text-left rounded-xl transition-all duration-200 group ${
+              isSelected
+                ? 'bg-primary/10 border border-primary/20 shadow-sm'
+                : 'hover:bg-secondary/40 border border-transparent'
+            }`}
+            onMouseEnter={() => setHoveredId(conversation.id)}
+            onMouseLeave={() => setHoveredId(null)}
+          >
+            {editingId === conversation.id ? (
+              <form onSubmit={(e) => handleEditSave(conversation.id, e)} className="p-2 space-y-2">
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  autoFocus
                   onClick={(e) => e.stopPropagation()}
-                >
-                  저장
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleEditCancel()
-                  }}
-                  className="px-2 py-1 text-xs bg-secondary text-foreground rounded hover:bg-secondary/80 transition-colors"
-                >
-                  취소
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button
-              onClick={() => onSelectConversation(conversation.id)}
-              className="w-full text-left focus:outline-none"
-              aria-label={`대화 ${conversation.id} 열기`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg 
-                      className="w-4 h-4 text-muted-foreground flex-shrink-0" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span className="text-xs text-muted-foreground truncate">
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEditCancel()
+                    }}
+                    className="px-2.5 py-1.5 text-xs bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-2.5 py-1.5 text-xs bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    저장
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => onSelectConversation(conversation.id)}
+                className="w-full p-3 text-left focus:outline-none rounded-xl"
+                aria-label={`대화 ${conversation.id} 열기`}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${isSelected ? 'bg-primary/20 text-primary' : 'bg-secondary/50 text-muted-foreground'}`}>
                       {formatDate(conversation.updated_at)}
                     </span>
                   </div>
-                  <p className={`text-sm line-clamp-2 ${
-                    isSelected ? 'text-primary font-medium' : 'text-foreground'
+                  <p className={`text-sm font-medium leading-relaxed line-clamp-2 ${
+                    isSelected ? 'text-foreground' : 'text-foreground/80'
                   }`}>
-                    {conversation.metadata?.title || conversation.first_message || `대화 ${conversation.id.slice(0, 8)}...`}
+                    {conversation.metadata?.title || conversation.first_message || `새로운 대화`}
                   </p>
                 </div>
+              </button>
+            )}
+            
+            {/* 편집/삭제 버튼 (호버 시 표시) */}
+            {editingId !== conversation.id && hoveredId === conversation.id && (
+              <div className="absolute right-2 top-2 flex gap-1 bg-background/80 backdrop-blur-sm rounded-lg p-0.5 shadow-sm border border-border/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleEditStart(conversation, e)}
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="제목 수정"
+                  title="제목 수정"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => handleDelete(conversation.id, e)}
+                  className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="삭제"
+                  title="삭제"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
-            </button>
-          )}
-          
-          {/* 편집/삭제 버튼 (호버 시 표시) */}
-          {editingId !== conversation.id && hoveredId === conversation.id && (
-            <div className="absolute top-2 right-2 flex gap-1">
-              <button
-                onClick={(e) => handleEditStart(conversation, e)}
-                className="p-1.5 rounded hover:bg-secondary/50 transition-colors"
-                aria-label="대화 제목 수정"
-                title="제목 수정"
-              >
-                <svg 
-                  className="w-3.5 h-3.5 text-muted-foreground" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => handleDelete(conversation.id, e)}
-                className="p-1.5 rounded hover:bg-destructive/20 transition-colors"
-                aria-label="대화 삭제"
-                title="삭제"
-              >
-                <svg 
-                  className="w-3.5 h-3.5 text-destructive" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-        )
-      })}
+            )}
+          </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
-

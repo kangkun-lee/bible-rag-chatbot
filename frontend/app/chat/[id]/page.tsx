@@ -274,93 +274,86 @@ export default function ChatPage() {
         />
       )}
 
-      {/* 왼쪽 사이드바 */}
-      <aside
-        className={`${isDesktop ? 'static' : 'fixed'} ${isDesktop ? '' : 'inset-y-0'} left-0 ${isDesktop ? 'w-96' : 'w-[90vw] max-w-sm'} sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong bg-background/95 border-r border-border/30 shadow-[4px_0_16px_rgba(0,0,0,0.12),8px_0_24px_rgba(0,0,0,0.08),16px_0_48px_rgba(0,0,0,0.04)] transform-gpu transition-transform duration-200 ease-in-out ${sidebarTranslateClass} md:static md:flex md:translate-x-0`}
-        role="navigation"
-        aria-label="주요 메뉴"
-        data-sidebar-open={isSidebarOpen}
-        data-is-desktop={isDesktop}
-        style={{
-          boxShadow: '4px 0 16px rgba(0, 0, 0, 0.12), 8px 0 24px rgba(0, 0, 0, 0.08), 16px 0 48px rgba(0, 0, 0, 0.04), inset -1px 0 0 rgba(255, 255, 255, 0.1)',
-          zIndex: isDesktop ? 0 : 40,
-          display: 'flex',
-          flexDirection: 'column',
-          height: isDesktop ? '100%' : 'calc(var(--vh, 1vh) * 100)',
-          ...(isDesktop ? {} : { 
-            position: 'fixed',
-            top: 0,
-            bottom: 0,
-            left: 0
-          }),
-          overflow: 'hidden',
-          willChange: !isDesktop ? 'transform' : 'auto'  // 모바일에서 애니메이션 성능 개선
-        }}
-      >
-        {/* 로고 영역 */}
-        <div className="flex-shrink-0 pt-6 sm:pt-8 md:pt-4 px-4 sm:px-5 md:px-6 pb-3 sm:pb-4 border-b border-border/30 flex items-center justify-between">
-          <button
-            onClick={() => {
-              handleNewConversation()
-            }}
-            className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg p-1 -m-1"
-            aria-label="홈으로 이동"
-          >
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.12),0_3px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] transform-style-preserve-3d transition-all duration-300 hover:shadow-[0_10px_28px_rgba(0,0,0,0.15),0_5px_14px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] hover:-translate-y-1 hover:translate-z-10 hover:rotate-3 flex-shrink-0" aria-hidden="true" style={{ transformStyle: 'preserve-3d' }}>
-              <span className="text-foreground font-bold text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">✟</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">성경QA</h1>
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">하나님의 말씀을 묻고 답하다</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(false)}
-            className="md:hidden inline-flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9 rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex-shrink-0 touch-manipulation"
-            aria-label="사이드바 닫기"
-            style={{ minWidth: '44px', minHeight: '44px' }}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* 메인 메뉴 */}
-        <div className="flex-shrink-0 p-3 sm:p-4 border-b border-border/30">
-          <h2 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 sm:mb-3 px-2">메인 메뉴</h2>
-          <div className="space-y-1">
-            <button 
-              onClick={handleNewConversation}
-              className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 text-sm font-medium group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation"
-              aria-label="새 대화 시작"
-              style={{ minHeight: '44px' }}
+        {/* 왼쪽 사이드바 */}
+        <aside
+          className={`${isDesktop ? 'static' : 'fixed'} ${isDesktop ? '' : 'inset-y-0'} left-0 ${isDesktop ? 'w-96' : 'w-[90vw] max-w-sm'} sm:w-80 md:w-96 flex-shrink-0 flex flex-col glass-strong border-r border-border/30 transform-gpu transition-transform duration-300 ease-out ${sidebarTranslateClass} md:static md:flex md:translate-x-0 z-40`}
+          role="navigation"
+          aria-label="주요 메뉴"
+          data-sidebar-open={isSidebarOpen}
+          data-is-desktop={isDesktop}
+          style={{
+            zIndex: isDesktop ? 0 : 40,
+            display: 'flex',
+            flexDirection: 'column',
+            height: isDesktop ? '100%' : 'calc(var(--vh, 1vh) * 100)',
+            ...(isDesktop ? {} : { 
+              position: 'fixed',
+              top: 0,
+              bottom: 0,
+              left: 0
+            }),
+          }}
+        >
+          {/* 로고 영역 */}
+          <div className="flex-shrink-0 pt-8 pb-6 px-6 border-b border-border/10 flex items-center justify-between">
+            <button
+              onClick={() => {
+                handleNewConversation()
+              }}
+              className="flex items-center gap-3.5 group focus:outline-none"
+              aria-label="홈으로 이동"
             >
-              <div className="w-5 h-5 rounded-lg bg-secondary/30 flex items-center justify-center group-hover:bg-secondary/50 transition-colors">
-                <svg className="w-3 h-3 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300 ring-1 ring-border/20">
+                <span className="text-foreground font-serif font-bold text-xl drop-shadow-sm">✟</span>
               </div>
-              <span>새 대화</span>
+              <div className="flex flex-col items-start">
+                <h1 className="text-lg font-bold text-foreground tracking-tight group-hover:text-primary transition-colors duration-300">성경QA</h1>
+                <p className="text-[10px] text-muted-foreground font-medium tracking-wider uppercase opacity-80">Divine Wisdom</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden p-2 rounded-full text-muted-foreground hover:bg-secondary/50 transition-colors"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
-        </div>
 
-        {/* 대화 내역 */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0" style={{ minHeight: 0 }}>
-          <h2 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 sm:mb-3 px-2">대화 내역</h2>
-          <ConversationList 
-            userId={selectedProfile?.id}
-            onSelectConversation={handleSelectConversation}
-            selectedConversationId={selectedConversationId}
-            onConversationDeleted={handleConversationDeleted}
-            onLoadingComplete={() => setConversationListLoaded(true)}
-          />
-        </div>
+          {/* 메인 메뉴 */}
+          <div className="flex-shrink-0 p-4 pb-2">
+            <button 
+              onClick={handleNewConversation}
+              className="w-full relative group overflow-hidden rounded-xl p-[1px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <span className="absolute inset-0 bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer" />
+              <div className="relative flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-background/50 backdrop-blur-md border border-border/20 group-hover:bg-background/80 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                <svg className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-sm font-semibold text-foreground tracking-wide">새로운 대화 시작</span>
+              </div>
+            </button>
+          </div>
+
+          {/* 대화 내역 */}
+          <div className="flex-1 overflow-y-auto min-h-0 px-2 py-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/30">
+            <div className="px-4 py-2 mb-2">
+               <h2 className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">History</h2>
+            </div>
+            <ConversationList 
+              userId={selectedProfile?.id}
+              onSelectConversation={handleSelectConversation}
+              selectedConversationId={selectedConversationId}
+              onConversationDeleted={handleConversationDeleted}
+              onLoadingComplete={() => setConversationListLoaded(true)}
+            />
+          </div>
 
           {/* 계정 - 하단 고정 */}
-          <div className="flex-shrink-0 p-3 sm:p-4 border-t border-border/30 bg-background/95">
+          <div className="flex-shrink-0 p-4 border-t border-border/10 bg-gradient-to-t from-background/50 to-transparent">
             <button
               onClick={() => {
                 if (window.confirm('다른 프로필로 변경하시겠습니까?')) {
@@ -368,27 +361,25 @@ export default function ChatPage() {
                   router.push('/')
                 }
               }}
-              className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation"
-              aria-label="프로필 변경"
-              style={{ minHeight: '44px' }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-secondary/40 transition-all duration-300 group border border-transparent hover:border-border/10"
             >
-              <div className="relative w-9 h-9 rounded-full bg-secondary/30 flex items-center justify-center text-foreground text-xs font-semibold group-hover:bg-secondary/50 transition-colors">
-                <span className="relative">{selectedProfile?.name ?? '사용자'}</span>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-1 ring-border/20 group-hover:ring-primary/30 transition-all">
+                <span className="text-xs font-bold text-foreground">{selectedProfile?.name?.[0] || 'U'}</span>
               </div>
-              <div className="flex flex-col items-start min-w-0">
-                <span className="text-sm font-medium truncate w-full text-left">
+              <div className="flex flex-col items-start min-w-0 flex-1">
+                <span className="text-sm font-medium text-foreground truncate w-full text-left group-hover:text-primary transition-colors">
                   {selectedProfile?.name ?? '사용자'}
                 </span>
-                <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  프로필 변경
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1 group-hover:text-muted-foreground/80">
+                  프로필 전환
                 </span>
               </div>
+              <svg className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+              </svg>
             </button>
           </div>
-      </aside>
+        </aside>
 
       {/* 오른쪽 메인 영역 */}
       <div 
