@@ -329,11 +329,31 @@ export default function ChatHome() {
 
           {/* 계정 - 하단 고정 */}
           <div className="flex-shrink-0 p-3 sm:p-4 border-t border-border/30 bg-background/95">
-            <button className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation" aria-label="내 계정" style={{ minHeight: '44px' }}>
+            <button
+              onClick={() => {
+                if (window.confirm('다른 프로필로 변경하시겠습니까?')) {
+                  localStorage.removeItem('bibleqa.profile')
+                  router.push('/')
+                }
+              }}
+              className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation"
+              aria-label="프로필 변경"
+              style={{ minHeight: '44px' }}
+            >
               <div className="relative w-9 h-9 rounded-full bg-secondary/30 flex items-center justify-center text-foreground text-xs font-semibold group-hover:bg-secondary/50 transition-colors">
                 <span className="relative">{selectedProfile?.name ?? '사용자'}</span>
               </div>
-              <span className="text-sm font-medium">내 계정</span>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-sm font-medium truncate w-full text-left">
+                  {selectedProfile?.name ?? '사용자'}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  프로필 변경
+                </span>
+              </div>
             </button>
           </div>
         </aside>
