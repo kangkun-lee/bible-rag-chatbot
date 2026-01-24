@@ -235,7 +235,6 @@ async def chat_stream(request: ChatRequest):
             # LangChain Agent 실행 - 스트리밍 시도, 실패 시 폴백
             # 먼저 astream_events로 스트리밍 시도
             try:
-                last_ai_content = ""
                 async for event in agent.astream_events(
                     {"messages": all_messages},
                     version="v1"
@@ -253,24 +252,10 @@ async def chat_stream(request: ChatRequest):
                             if hasattr(chunk, 'content'):
                                 content = chunk.content
                                 if isinstance(content, str) and content:
-                                    # 이전 내용 이후의 새로운 부분만 추출
-                                    if last_ai_content and content.startswith(last_ai_content):
-                                        new_text = content[len(last_ai_content):]
-                                        if new_text:
-                                            yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                            accumulated_text += new_text
-                                            has_streamed = True
-                                            last_ai_content = content
-                                    elif content != last_ai_content:
-                                        if last_ai_content:
-                                            new_text = content[len(last_ai_content):] if content.startswith(last_ai_content) else content
-                                        else:
-                                            new_text = content
-                                        if new_text:
-                                            yield f"data: {json.dumps({'type': 'token', 'content': new_text}, ensure_ascii=False)}\n\n"
-                                            accumulated_text += new_text
-                                            has_streamed = True
-                                            last_ai_content = content
+                                    # 단순히 delta를 전송 및 누적
+                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
+                                    accumulated_text += content
+                                    has_streamed = True
                             
                     # Tool 실행 완료 시 소스 정보 추출
                     elif event_type == "on_tool_end":
@@ -296,28 +281,6 @@ async def chat_stream(request: ChatRequest):
                                     })
                                     if len(sources) >= 3:
                                         break
-                    
-                    # AIMessage 완성 시 최종 텍스트 추출
-                    elif event_type == "on_chain_end" and event_name == "RunnableAgent":
-                        output = event.get("data", {}).get("output", {})
-                        if "messages" in output:
-                    for msg in output["messages"]:
-                        if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
-                            content = msg.content
-                            if isinstance(content, str) and content:
-                                if not accumulated_text:
-                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                    accumulated_text = content
-                                elif content.startswith(accumulated_text):
-                                    missing_text = content[len(accumulated_text):]
-                                    if missing_text:
-                                        yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
-                                        accumulated_text = content
-                                else:
-                                    # 스트리밍 중 일부 앞부분이 누락된 경우 전체 텍스트를 다시 전송
-                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                    accumulated_text = content
-                            break
             except Exception as stream_error:
                 stream_error_message = str(stream_error)
                 print(f"스트리밍 오류: {stream_error_message}")

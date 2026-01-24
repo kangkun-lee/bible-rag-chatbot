@@ -84,8 +84,9 @@ export default function Home() {
       const newUrl = `/chat/${conversationId}`
       // 현재 URL과 다를 때만 업데이트
       if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-        // Next.js router.push를 사용하여 URL 업데이트
-        router.push(newUrl)
+        // Next.js router.push 대신 history.pushState 사용
+        // 이렇게 하면 페이지 리로드나 컴포넌트 언마운트 없이 URL만 변경됨
+        window.history.pushState({ path: newUrl }, '', newUrl)
       }
     }
   }
@@ -96,7 +97,7 @@ export default function Home() {
     // URL 업데이트 (Vercel/Render 배포 환경 대응)
     const newUrl = `/chat/${conversationId}`
     if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-      router.push(newUrl)
+      window.history.pushState({ path: newUrl }, '', newUrl)
     }
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)

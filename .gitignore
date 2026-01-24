@@ -234,3 +234,5 @@ bible/
 
 # Playwright MCP 테스트 스크린샷
 .playwright-mcp/
+
+.agent/*
