@@ -66,6 +66,10 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
 
     // 새 대화 시작 (conversationId가 null로 변경된 경우 또는 처음부터 null인 경우)
     if (!conversationId) {
+      // 첫 메시지 전송 직후에는 conversationId가 아직 null일 수 있으므로 초기화하지 않음
+      if (isLoading || Date.now() - lastMessageSentRef.current < 2000) {
+        return
+      }
       // 새 대화 시작 시 무조건 메시지 비우기 (이전 대화에서 전환된 경우 또는 처음부터 새 대화인 경우)
       if (previousConversationId !== null || messages.length > 0) {
         setMessages([])
