@@ -84,67 +84,65 @@ export default function Message({ message, index }: MessageProps) {
             <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
             <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
+        ) : message.isUser ? (
+          <div className="whitespace-pre-wrap break-words text-base leading-relaxed text-white dark:text-white">
+            {message.text}
+          </div>
         ) : (
-          <div className={`prose prose-sm md:prose-base max-w-none leading-relaxed break-words dark:prose-invert ${message.isUser ? 'prose-headings:text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground' : 'prose-headings:text-foreground prose-p:text-foreground'}`}>
-            {message.isUser ? (
-              <p className="whitespace-pre-wrap break-words m-0 text-base">
+          <div className="prose prose-sm md:prose-base max-w-none leading-relaxed break-words dark:prose-invert prose-headings:text-foreground prose-p:text-foreground">
+            <div className="relative font-serif">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-3 last:mb-0 break-words leading-relaxed">{children}</p>,
+                  h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-6 first:mt-0 tracking-tight">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5 first:mt-0 tracking-tight">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-4 first:mt-0">{children}</h3>,
+                  ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ol>,
+                  li: ({ children }) => <li className="ml-1">{children}</li>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-primary/30 pl-4 italic my-4 text-muted-foreground bg-muted/20 py-2 rounded-r-lg">
+                      {children}
+                    </blockquote>
+                  ),
+                  code: ({ children, className }) => {
+                    const isInline = !className
+                    return isInline ? (
+                      <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border/50">
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="block bg-muted/50 p-4 rounded-xl text-sm font-mono overflow-x-auto my-3 border border-border/50">
+                        {children}
+                      </code>
+                    )
+                  },
+                  strong: ({ children }) => <strong className="font-semibold text-foreground/90">{children}</strong>,
+                  a: ({ href, children }) => (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline decoration-primary/30 hover:decoration-primary transition-all break-all font-medium"
+                    >
+                      {children}
+                    </a>
+                  ),
+                  hr: () => <hr className="my-6 border-border/40" />,
+                }}
+              >
                 {message.text}
-              </p>
-            ) : (
-              <div className="relative font-serif">
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }) => <p className="mb-3 last:mb-0 break-words leading-relaxed">{children}</p>,
-                    h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-6 first:mt-0 tracking-tight">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5 first:mt-0 tracking-tight">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-4 first:mt-0">{children}</h3>,
-                    ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1.5 marker:text-muted-foreground">{children}</ol>,
-                    li: ({ children }) => <li className="ml-1">{children}</li>,
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-primary/30 pl-4 italic my-4 text-muted-foreground bg-muted/20 py-2 rounded-r-lg">
-                        {children}
-                      </blockquote>
-                    ),
-                    code: ({ children, className }) => {
-                      const isInline = !className
-                      return isInline ? (
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border/50">
-                          {children}
-                        </code>
-                      ) : (
-                        <code className="block bg-muted/50 p-4 rounded-xl text-sm font-mono overflow-x-auto my-3 border border-border/50">
-                          {children}
-                        </code>
-                      )
-                    },
-                    strong: ({ children }) => <strong className="font-semibold text-foreground/90">{children}</strong>,
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline decoration-primary/30 hover:decoration-primary transition-all break-all font-medium"
-                      >
-                        {children}
-                      </a>
-                    ),
-                    hr: () => <hr className="my-6 border-border/40" />,
-                  }}
-                >
-                  {message.text}
-                </ReactMarkdown>
-                {message.isLoading && !message.isUser && (
-                  <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-primary/50 animate-pulse rounded-full"></span>
-                )}
-              </div>
-            )}
+              </ReactMarkdown>
+              {message.isLoading && !message.isUser && (
+                <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-primary/50 animate-pulse rounded-full"></span>
+              )}
+            </div>
           </div>
         )}
 
         {!message.isLoading && message.text && (
           <div
-            className={`mt-2 flex items-center gap-3 text-[10px] md:text-[11px] font-medium opacity-80 ${message.isUser ? 'justify-end text-primary-foreground/70' : 'justify-start text-muted-foreground'}`}
+            className={`mt-2 flex items-center gap-3 text-[10px] md:text-[11px] font-medium opacity-80 ${message.isUser ? 'justify-end text-white/80' : 'justify-start text-muted-foreground'}`}
           >
             {formattedTime && (
               <time dateTime={message.createdAt} className="tracking-wide uppercase">
@@ -154,7 +152,7 @@ export default function Message({ message, index }: MessageProps) {
             <button
               onClick={handleCopy}
               className={`flex items-center gap-1.5 rounded-full px-2 py-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${message.isUser
-                  ? 'hover:bg-white/10 active:bg-white/20'
+                  ? 'hover:bg-white/10 active:bg-white/20 text-white'
                   : 'hover:bg-secondary active:bg-secondary/80'
                 }`}
               aria-label={copied ? '복사 완료' : '메시지 복사'}
