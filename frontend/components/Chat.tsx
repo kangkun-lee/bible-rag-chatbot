@@ -49,6 +49,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
   const conversationIdRef = useRef<string | null>(conversationId || null)
   const processedMessagesRef = useRef<Set<string>>(new Set())
   const skipInitialLoadRef = useRef(false)
+  const lastMessageSentRef = useRef<number>(0) // 마지막으로 메시지를 보낸 시간 (타임스탬프)
 
   // isLoading 상태 변경 시 부모에게 알림
   useEffect(() => {
@@ -79,6 +80,11 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     // 스트리밍 중이거나 skip 플래그가 설정된 경우 초기화하지 않음
     if (skipInitialLoadRef.current) {
       skipInitialLoadRef.current = false
+      return
+    }
+
+    // 최근에 메시지를 보냈다면 (2초 이내) 초기화하지 않음 (새 대화 생성 시 URL 변경으로 인한 리셋 방지)
+    if (Date.now() - lastMessageSentRef.current < 2000) {
       return
     }
 
@@ -113,7 +119,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
   useEffect(() => {
     if (initialMessage && !processedMessagesRef.current.has(initialMessage)) {
       processedMessagesRef.current.add(initialMessage)
-      
+
       const handleInitialMessage = async () => {
         const userTimestamp = new Date().toISOString()
         const userMessage: MessageData = {
@@ -141,13 +147,13 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             createdAt: aiMessageTimestamp,
           }
           setMessages((prev) => [...prev, loadingMessage])
-          
+
           let accumulatedText = ''
           // conversationId prop을 우선 사용하고, 없으면 ref 사용 (새 대화 시작 시 null 보장)
           let currentConversationId = conversationId || conversationIdRef.current || null
           let streamCompleted = false
           let firstTokenReceived = false
-          
+
           try {
             for await (const event of sendMessageStream(initialMessage, currentConversationId)) {
               if (event.type === 'start') {
@@ -215,7 +221,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 break
               } else if (event.type === 'error') {
                 streamCompleted = true
-                
+
                 // 에러 메시지 처리
                 let errorText = '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.'
                 if (event.content) {
@@ -226,16 +232,16 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                     errorText = event.content
                   }
                 }
-                
+
                 // 로딩 메시지를 에러 메시지로 교체
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === aiMessageId && msg.isLoading
                       ? {
-                          ...msg,
-                          text: errorText,
-                          isLoading: false,
-                        }
+                        ...msg,
+                        text: errorText,
+                        isLoading: false,
+                      }
                       : msg
                   )
                 )
@@ -243,7 +249,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 break
               }
             }
-            
+
             // 스트리밍이 완료되지 않은 경우 대비
             if (!streamCompleted) {
               setIsLoading(false)
@@ -266,6 +272,8 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
         } finally {
           setIsLoading(false)
           if (onMessageSent) onMessageSent()
+          // 에러 발생 시에도 메시지 전송으로 간주하여 초기화 방지
+          lastMessageSentRef.current = Date.now()
         }
       }
       handleInitialMessage()
@@ -275,23 +283,24 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
   useEffect(() => {
     if (externalMessage && externalMessage !== initialMessage && !processedMessagesRef.current.has(externalMessage)) {
       processedMessagesRef.current.add(externalMessage)
-      
+
       const handleExternalMessage = async () => {
-      const userTimestamp = new Date().toISOString()
-      const userMessage: MessageData = {
+        const userTimestamp = new Date().toISOString()
+        const userMessage: MessageData = {
           id: Date.now().toString(),
           text: externalMessage,
           isUser: true,
-        createdAt: userTimestamp,
+          createdAt: userTimestamp,
         }
 
         setMessages((prev) => [...prev, userMessage])
         setIsLoading(true)
+        lastMessageSentRef.current = Date.now() // 메시지 전송 시간 기록
 
         try {
           // 스트리밍 사용
-        const aiMessageId = (Date.now() + 1).toString()
-        const aiMessageTimestamp = new Date().toISOString()
+          const aiMessageId = (Date.now() + 1).toString()
+          const aiMessageTimestamp = new Date().toISOString()
           // 계산 중 애니메이션을 표시하는 메시지 추가
           const loadingMessage: MessageData = {
             id: aiMessageId,
@@ -299,16 +308,16 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             isUser: false,
             sources: undefined,
             isLoading: true,
-          createdAt: aiMessageTimestamp,
+            createdAt: aiMessageTimestamp,
           }
           setMessages((prev) => [...prev, loadingMessage])
-          
+
           let accumulatedText = ''
           // conversationId prop을 우선 사용하고, 없으면 ref 사용 (새 대화 시작 시 null 보장)
           let currentConversationId = conversationId || conversationIdRef.current || null
           let streamCompleted = false
           let firstTokenReceived = false
-          
+
           try {
             for await (const event of sendMessageStream(externalMessage, currentConversationId)) {
               if (event.type === 'start') {
@@ -331,13 +340,13 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 // 첫 토큰이 도착하면 로딩 메시지를 실제 텍스트로 교체
                 if (!firstTokenReceived) {
                   firstTokenReceived = true
-                const aiMessage: MessageData = {
+                  const aiMessage: MessageData = {
                     id: aiMessageId,
                     text: accumulatedText,
                     isUser: false,
                     sources: undefined,
                     isLoading: false,
-                  createdAt: aiMessageTimestamp,
+                    createdAt: aiMessageTimestamp,
                   }
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -379,7 +388,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
                 break
               }
             }
-            
+
             // 스트리밍이 완료되지 않은 경우 대비
             if (!streamCompleted) {
               setIsLoading(false)
@@ -427,15 +436,15 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     if (!force && !shouldAutoScrollRef.current) {
       return
     }
-    
+
     const container = getScrollContainer()
     if (container) {
       // 모바일에서 더 확실한 스크롤을 위해 여러 방법 시도
       const scrollHeight = container.scrollHeight
-      
+
       // 1. 즉시 스크롤
       container.scrollTop = scrollHeight
-      
+
       // 2. requestAnimationFrame으로 다시 시도
       requestAnimationFrame(() => {
         container.scrollTop = scrollHeight
@@ -447,7 +456,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           })
         }, 10)
       })
-      
+
       // 4. 추가 보장을 위해 한 번 더
       setTimeout(() => {
         const finalScrollTop = container.scrollTop
@@ -470,7 +479,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100 // 100px 여유
-      
+
       // 사용자가 맨 아래 근처에 있으면 자동 스크롤 활성화
       shouldAutoScrollRef.current = isNearBottom
     }
@@ -526,7 +535,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
 
   const handleSubmit = async (e: React.FormEvent, messageText?: string) => {
     e.preventDefault()
-    
+
     const textToSend = messageText || input.trim()
     if (!textToSend || isLoading) return
 
@@ -541,6 +550,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
+    lastMessageSentRef.current = Date.now() // 메시지 전송 시간 기록
     if (onMessageSent) onMessageSent()
 
     try {
@@ -635,7 +645,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             throw new Error(event.content || '스트리밍 중 오류가 발생했습니다.')
           }
         }
-        
+
         // 스트리밍이 완료되지 않은 경우 대비
         if (!streamCompleted) {
           setIsLoading(false)
@@ -679,9 +689,9 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
             </div>
           )}
           {messages.map((message, index) => (
-            <Message 
-              key={message.id} 
-              message={message} 
+            <Message
+              key={message.id}
+              message={message}
               index={index}
             />
           ))}
@@ -693,14 +703,14 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
       {showInput && (
         <form onSubmit={(e) => handleSubmit(e)} className="glass-strong p-4 md:p-5 border-t border-border/30 sticky bottom-0">
           <div className="flex space-x-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="질문을 입력하세요..."
-                className="flex-1 px-4 md:px-5 py-3 md:py-3.5 glass rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 placeholder:text-muted-foreground text-foreground text-sm md:text-base font-medium min-h-[48px]"
-                disabled={isLoading}
-              />
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="질문을 입력하세요..."
+              className="flex-1 px-4 md:px-5 py-3 md:py-3.5 glass rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 placeholder:text-muted-foreground text-foreground text-sm md:text-base font-medium min-h-[48px]"
+              disabled={isLoading}
+            />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
