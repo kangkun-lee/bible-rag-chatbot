@@ -6,7 +6,10 @@ import ThemeToggle from '../../../components/ThemeToggle'
 import ConversationList from '../../../components/ConversationList'
 import LoadingScreen from '../../../components/LoadingScreen'
 import { useState, useEffect, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import type { Profile } from '../../../lib/profiles'
+import { resolveProfile } from '../../../lib/profiles'
+import { getProfileFromStorage, saveProfile } from '../../../lib/profileStorage'
 
 export default function ChatPage() {
   const router = useRouter()
@@ -22,7 +25,9 @@ export default function ChatPage() {
   const [isDesktop, setIsDesktop] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [conversationListLoaded, setConversationListLoaded] = useState(false)
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const skipAutoFetchRef = useRef(false)
+  const searchParams = useSearchParams()
 
   // URL의 conversation ID와 상태 동기화
   useEffect(() => {
@@ -36,6 +41,16 @@ export default function ChatPage() {
       }
     }
   }, [conversationIdFromUrl, selectedConversationId, router])
+
+  useEffect(() => {
+    const resolved = resolveProfile(searchParams.get('user')) || getProfileFromStorage()
+    if (!resolved) {
+      router.replace('/')
+      return
+    }
+    saveProfile(resolved)
+    setSelectedProfile(resolved)
+  }, [router, searchParams])
 
   // 모바일에서 사이드바는 기본적으로 닫혀있어야 함
   useEffect(() => {
@@ -95,28 +110,23 @@ export default function ChatPage() {
       skipAutoFetchRef.current = true
     }
     setSelectedConversationId(conversationId)
-    // URL 업데이트 (Vercel/Render 배포 환경 대응)
-    if (conversationId) {
-      const newUrl = `/chat/${conversationId}`
-      // 현재 URL과 다를 때만 업데이트
-      if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-        // Next.js router.push를 사용하여 URL 업데이트 (replace: true로 히스토리 교체)
-        router.push(newUrl)
-      }
-    } else {
-      const newUrl = '/'
-      if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
-        router.push(newUrl)
-      }
+    const userQuery = selectedProfile ? `?user=${selectedProfile.key}` : ''
+    const newUrl = conversationId
+      ? `/chat/${conversationId}${userQuery}`
+      : `/chat${userQuery}`
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== newUrl) {
+      router.push(newUrl)
     }
   }
 
   const handleSelectConversation = async (conversationId: string) => {
+    if (!selectedProfile) return
     skipAutoFetchRef.current = true
     setSelectedConversationId(conversationId)
     // URL 업데이트 (Vercel/Render 배포 환경 대응)
-    const newUrl = `/chat/${conversationId}`
-    if (typeof window !== 'undefined' && window.location.pathname !== newUrl) {
+    const userQuery = `?user=${selectedProfile.key}`
+    const newUrl = `/chat/${conversationId}${userQuery}`
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== newUrl) {
       router.push(newUrl)
     }
     
@@ -126,7 +136,7 @@ export default function ChatPage() {
     // 메시지 로딩 시작
     setConversationMessages([])
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}/messages`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}/messages?user_id=${selectedProfile.id}`, {
         // 캐싱 헤더 추가
         cache: 'default',
         headers: {
@@ -146,8 +156,8 @@ export default function ChatPage() {
     setSelectedConversationId(null)
     setConversationMessages([])
     setInputMessage(null)
-    // URL을 루트로 변경
-    router.push('/', { scroll: false })
+    const userQuery = selectedProfile ? `?user=${selectedProfile.key}` : ''
+    router.push(`/chat${userQuery}`, { scroll: false })
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false)
     }
@@ -158,8 +168,8 @@ export default function ChatPage() {
     if (selectedConversationId) {
       setSelectedConversationId(null)
       setConversationMessages([])
-      // URL을 루트로 변경
-      router.push('/', { scroll: false })
+      const userQuery = selectedProfile ? `?user=${selectedProfile.key}` : ''
+      router.push(`/chat${userQuery}`, { scroll: false })
     }
   }
 
@@ -197,6 +207,8 @@ export default function ChatPage() {
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [isSidebarOpen, isDesktop])
+
+  if (!selectedProfile) return null
 
   return (
     <>
@@ -339,6 +351,7 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0" style={{ minHeight: 0 }}>
           <h2 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 sm:mb-3 px-2">대화 내역</h2>
           <ConversationList 
+            userId={selectedProfile?.id}
             onSelectConversation={handleSelectConversation}
             selectedConversationId={selectedConversationId}
             onConversationDeleted={handleConversationDeleted}
@@ -350,7 +363,7 @@ export default function ChatPage() {
         <div className="flex-shrink-0 p-3 sm:p-4 border-t border-border/30 bg-background/95">
           <button className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-foreground hover:bg-secondary/30 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 touch-manipulation" aria-label="내 계정" style={{ minHeight: '44px' }}>
             <div className="relative w-9 h-9 rounded-full bg-secondary/30 flex items-center justify-center text-foreground text-xs font-semibold group-hover:bg-secondary/50 transition-colors">
-              <span className="relative">사용자</span>
+              <span className="relative">{selectedProfile?.name ?? '사용자'}</span>
             </div>
             <span className="text-sm font-medium">내 계정</span>
           </button>
@@ -389,9 +402,9 @@ export default function ChatPage() {
           <header className="flex items-center justify-between px-4 sm:px-6 md:px-8 pt-2 pb-3 sm:pb-4 md:py-6 flex-shrink-0 glass-strong border-b border-border/30 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06),0_16px_48px_rgba(0,0,0,0.04)]" role="banner" style={{ paddingTop: isDesktop ? undefined : '64px' }}>
             <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
               <div className={`${isDesktop ? '' : 'pl-12 sm:pl-14'} md:pl-0 flex-1 min-w-0`}>
-                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-1.5 truncate">
-                  안녕하세요, 사용자님
-                </h2>
+                  <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-1.5 truncate">
+                    안녕하세요, {selectedProfile?.name ?? '사용자'}님
+                  </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5 sm:gap-2">
                   <span className="text-foreground text-base sm:text-lg" aria-hidden="true">✟</span>
                   <span className="truncate">성경에 대해 무엇이든 물어보세요</span>
@@ -445,6 +458,7 @@ export default function ChatPage() {
             >
               <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 md:px-6 py-4 sm:py-6">
                 <Chat 
+                  userId={selectedProfile?.id}
                   initialMessage={null} 
                   externalMessage={inputMessage}
                   onMessageSent={handleMessageReceived}

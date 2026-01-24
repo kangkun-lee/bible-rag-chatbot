@@ -13,7 +13,8 @@ export interface ChatResponse {
 
 export async function sendMessage(
   message: string,
-  conversationId?: string | null
+  conversationId?: string | null,
+  userId?: string | null
 ): Promise<ChatResponse> {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
@@ -23,6 +24,7 @@ export async function sendMessage(
     body: JSON.stringify({
       message,
       conversation_id: conversationId,
+      user_id: userId,
     }),
   })
 
@@ -48,7 +50,8 @@ export interface StreamEvent {
 
 export async function* sendMessageStream(
   message: string,
-  conversationId?: string | null
+  conversationId?: string | null,
+  userId?: string | null
 ): AsyncGenerator<StreamEvent, void, unknown> {
   const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
     method: 'POST',
@@ -58,6 +61,7 @@ export async function* sendMessageStream(
     body: JSON.stringify({
       message,
       conversation_id: conversationId,
+      user_id: userId,
     }),
   })
 

@@ -11,13 +11,14 @@ interface Conversation {
 }
 
 interface ConversationListProps {
+  userId?: string
   onSelectConversation: (conversationId: string) => void
   selectedConversationId?: string | null
   onConversationDeleted?: () => void
   onLoadingComplete?: () => void
 }
 
-export default function ConversationList({ onSelectConversation, selectedConversationId, onConversationDeleted, onLoadingComplete }: ConversationListProps) {
+export default function ConversationList({ userId, onSelectConversation, selectedConversationId, onConversationDeleted, onLoadingComplete }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [allConversations, setAllConversations] = useState<Conversation[]>([]) // 전체 대화 목록 (검색용)
   const [isLoading, setIsLoading] = useState(true)
@@ -45,7 +46,8 @@ export default function ConversationList({ onSelectConversation, selectedConvers
   const fetchConversations = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations`, {
+      const userQuery = userId ? `?user_id=${userId}` : ''
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations${userQuery}`, {
         // 캐싱 헤더 추가 (5분간 캐시)
         cache: 'default',
         headers: {
@@ -77,7 +79,8 @@ export default function ConversationList({ onSelectConversation, selectedConvers
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}`, {
+      const userQuery = userId ? `?user_id=${userId}` : ''
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}${userQuery}`, {
         method: 'DELETE',
       })
       
@@ -118,7 +121,8 @@ export default function ConversationList({ onSelectConversation, selectedConvers
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}?title=${encodeURIComponent(editTitle.trim())}`, {
+      const userQuery = userId ? `&user_id=${userId}` : ''
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/conversations/${conversationId}?title=${encodeURIComponent(editTitle.trim())}${userQuery}`, {
         method: 'PATCH',
       })
       
@@ -167,7 +171,7 @@ export default function ConversationList({ onSelectConversation, selectedConvers
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [userId])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)

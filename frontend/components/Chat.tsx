@@ -26,6 +26,7 @@ interface ChatProps {
   showInput?: boolean
   externalMessage?: string | null
   conversationId?: string | null
+  userId?: string | null
   initialMessages?: Array<{
     id: string
     role: string
@@ -41,7 +42,7 @@ interface ChatProps {
   onConversationIdChange?: (conversationId: string | null, options?: { skipAutoFetch?: boolean }) => void
 }
 
-export default function Chat({ initialMessage, onMessageSent, onLoadingChange, showMessages = true, showInput = true, externalMessage, conversationId, initialMessages, onConversationIdChange }: ChatProps) {
+export default function Chat({ initialMessage, onMessageSent, onLoadingChange, showMessages = true, showInput = true, externalMessage, conversationId, userId, initialMessages, onConversationIdChange }: ChatProps) {
   const [messages, setMessages] = useState<MessageData[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -159,7 +160,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           let firstTokenReceived = false
 
           try {
-            for await (const event of sendMessageStream(initialMessage, currentConversationId)) {
+            for await (const event of sendMessageStream(initialMessage, currentConversationId, userId)) {
               if (event.type === 'start') {
                 if (event.conversation_id) {
                   currentConversationId = event.conversation_id
@@ -323,7 +324,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
           let firstTokenReceived = false
 
           try {
-            for await (const event of sendMessageStream(externalMessage, currentConversationId)) {
+            for await (const event of sendMessageStream(externalMessage, currentConversationId, userId)) {
               if (event.type === 'start') {
                 if (event.conversation_id) {
                   currentConversationId = event.conversation_id
@@ -579,7 +580,7 @@ export default function Chat({ initialMessage, onMessageSent, onLoadingChange, s
       let firstTokenReceived = false
 
       try {
-        for await (const event of sendMessageStream(textToSend, currentConversationId)) {
+        for await (const event of sendMessageStream(textToSend, currentConversationId, userId)) {
           if (event.type === 'start') {
             if (event.conversation_id) {
               currentConversationId = event.conversation_id
