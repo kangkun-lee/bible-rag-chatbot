@@ -251,10 +251,23 @@ async def chat_stream(request: ChatRequest):
                             # chunk에서 content 추출
                             if hasattr(chunk, 'content'):
                                 content = chunk.content
-                                if isinstance(content, str) and content:
+                                text_content = ""
+                                
+                                # Content 타입 처리 (문자열 또는 리스트)
+                                if isinstance(content, str):
+                                    text_content = content
+                                elif isinstance(content, list):
+                                    # 리스트인 경우 텍스트 부분만 추출하여 결합
+                                    for item in content:
+                                        if isinstance(item, str):
+                                            text_content += item
+                                        elif isinstance(item, dict) and 'text' in item:
+                                            text_content += item['text']
+                                
+                                if text_content:
                                     # 단순히 delta를 전송 및 누적
-                                    yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                    accumulated_text += content
+                                    yield f"data: {json.dumps({'type': 'token', 'content': text_content}, ensure_ascii=False)}\n\n"
+                                    accumulated_text += text_content
                                     has_streamed = True
                             
                     # Tool 실행 완료 시 소스 정보 추출
@@ -324,22 +337,35 @@ async def chat_stream(request: ChatRequest):
                         for msg in result["messages"]:
                             if hasattr(msg, '__class__') and msg.__class__.__name__ == "AIMessage":
                                 content = msg.content
-                                if isinstance(content, str) and content:
+                                text_content = ""
+                                
+                                # Content 타입 처리 (문자열 또는 리스트)
+                                if isinstance(content, str):
+                                    text_content = content
+                                elif isinstance(content, list):
+                                    # 리스트인 경우 텍스트 부분만 추출하여 결합
+                                    for item in content:
+                                        if isinstance(item, str):
+                                            text_content += item
+                                        elif isinstance(item, dict) and 'text' in item:
+                                            text_content += item['text']
+                                            
+                                if text_content:
                                     if not accumulated_text:
                                         chunk_size = 20
-                                        for i in range(0, len(content), chunk_size):
-                                            chunk = content[i:i+chunk_size]
+                                        for i in range(0, len(text_content), chunk_size):
+                                            chunk = text_content[i:i+chunk_size]
                                             yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
                                             accumulated_text += chunk
                                             await asyncio.sleep(0.02)
-                                    elif content.startswith(accumulated_text):
-                                        missing_text = content[len(accumulated_text):]
+                                    elif text_content.startswith(accumulated_text):
+                                        missing_text = text_content[len(accumulated_text):]
                                         if missing_text:
                                             yield f"data: {json.dumps({'type': 'token', 'content': missing_text}, ensure_ascii=False)}\n\n"
-                                            accumulated_text = content
+                                            accumulated_text = text_content
                                     else:
-                                        yield f"data: {json.dumps({'type': 'token', 'content': content}, ensure_ascii=False)}\n\n"
-                                        accumulated_text = content
+                                        yield f"data: {json.dumps({'type': 'token', 'content': text_content}, ensure_ascii=False)}\n\n"
+                                        accumulated_text = text_content
                                 break
                 except Exception as e:
                     fallback_error_message = str(e)
