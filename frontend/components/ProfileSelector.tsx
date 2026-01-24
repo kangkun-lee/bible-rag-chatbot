@@ -34,9 +34,6 @@ export default function ProfileSelector({ onSelect }: ProfileSelectorProps) {
             <span className="text-sm md:text-lg font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {profile.name}
             </span>
-            <span className="text-[11px] md:text-xs text-muted-foreground/80">
-              {profile.tagline}
-            </span>
           </button>
         ))}
       </div>

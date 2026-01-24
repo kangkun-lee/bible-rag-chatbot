@@ -236,3 +236,11 @@ bible/
 .playwright-mcp/
 
 .agent/*
+
+# Reports and logs
+frontend/comprehensive-test-report.md
+frontend/mobile-test-report.md
+frontend/fix-summary.md
+frontend/design-tokens.json
+frontend/playwright-report/
+frontend/test-results/
